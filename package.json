@@ -15,13 +15,11 @@
   "devDependencies": {
     "@ui5/cli": "^2.6.6",
     "cordova-ios": "^6.1.1",
-    "cordova-plugin-whitelist": "^1.3.4",
-    "cordova-plugin-wkwebviewxhrfix": "git+https://github.com/TheMattRay/cordova-plugin-wkwebviewxhrfix.git"
+    "cordova-plugin-whitelist": "^1.3.4"
   },
   "cordova": {
     "plugins": {
-      "cordova-plugin-whitelist": {},
-      "cordova-plugin-wkwebviewxhrfix": {}
+      "cordova-plugin-whitelist": {}
     },
     "platforms": [
       "ios"

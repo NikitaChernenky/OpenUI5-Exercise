@@ -19,6 +19,7 @@
 
 // Wait for the deviceready event before using any of Cordova's device APIs.
 // See https://cordova.apache.org/docs/en/latest/cordova/events/events.html#deviceready
+console.log('index page initiated');
 document.addEventListener('deviceready', onDeviceReady, false);
 
 function onDeviceReady() {
