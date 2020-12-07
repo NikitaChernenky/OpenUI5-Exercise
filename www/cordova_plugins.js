@@ -1,5 +1,5 @@
 cordova.define('cordova/plugin_list', function(require, exports, module) {
-module.exports = [
+module.exports = [ /*
     {
         "id": "com.saskpower.mobility.plugin.sendHttpRequest.sendHttpRequest",
         "file": "plugins/com.saskpower.mobility.plugin.sendHttpRequest/www/sendHttpRequest.js",
@@ -55,18 +55,18 @@ module.exports = [
         "clobbers": [
             "SQLitePlugin"
         ]
-    }
+    } */
 ];
 module.exports.metadata = 
 // TOP OF METADATA
 {
-    "com.saskpower.mobility.plugin.sendHttpRequest": "0.0.1",
-    "cordova-plugin-console": "1.0.3",
-    "cordova-plugin-ios-keychain": "2.0.0",
-    "cordova-plugin-splashscreen": "4.0.0",
-    "cordova-plugin-statusbar": "2.0.0",
+  //  "com.saskpower.mobility.plugin.sendHttpRequest": "0.0.1",
+  //  "cordova-plugin-console": "1.0.3",
+  //  "cordova-plugin-ios-keychain": "2.0.0",
+  //  "cordova-plugin-splashscreen": "4.0.0",
+  //  "cordova-plugin-statusbar": "2.0.0",
     "cordova-plugin-whitelist": "1.2.2",
-    "cordova-sqlite-storage": "1.4.8"
+ //   "cordova-sqlite-storage": "1.4.8"
 };
 // BOTTOM OF METADATA
 });
