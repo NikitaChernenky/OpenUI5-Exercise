@@ -1,0 +1,1 @@
+{"plugins":["cordova-plugin-whitelist","cordova-plugin-statusbar","com.shazron.cordova.plugin.keychainutil","cordova-plugin-splashscreen","cordova-plugin-vs-taco-support","cordova-plugin-console","cordova-sqlite-storage","com.saskpower.mobility.plugin.sendHttpRequest","cordova-plugin-ios-keychaiplugins.json"]}

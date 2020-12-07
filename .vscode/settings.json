@@ -1,0 +1,12 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "platforms": true,
+        "**/.DS_Store": true,
+        "plugins" : true,
+        "Staging" : true,
+        "node_modules" : true
+    }
+}
