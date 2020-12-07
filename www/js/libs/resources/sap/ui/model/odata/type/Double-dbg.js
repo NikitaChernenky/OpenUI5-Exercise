@@ -1,13 +1,19 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['sap/ui/core/format/NumberFormat', 'sap/ui/model/FormatException',
-		'sap/ui/model/odata/type/ODataType', 'sap/ui/model/ParseException',
-		'sap/ui/model/ValidateException'],
-	function(NumberFormat, FormatException, ODataType, ParseException, ValidateException) {
+sap.ui.define([
+	"sap/base/Log",
+	"sap/ui/core/format/NumberFormat",
+	"sap/ui/model/FormatException",
+	"sap/ui/model/ParseException",
+	"sap/ui/model/ValidateException",
+	"sap/ui/model/odata/type/ODataType",
+	"sap/ui/thirdparty/jquery"
+], function (Log, NumberFormat, FormatException, ParseException, ValidateException, ODataType,
+		jQuery) {
 	"use strict";
 
 	/**
@@ -31,7 +37,7 @@ sap.ui.define(['sap/ui/core/format/NumberFormat', 'sap/ui/model/FormatException'
 		var oFormatOptions;
 
 		if (!oType.oFormat) {
-			oFormatOptions = jQuery.extend({groupingEnabled: true}, oType.oFormatOptions);
+			oFormatOptions = jQuery.extend({groupingEnabled : true}, oType.oFormatOptions);
 			oType.oFormat = NumberFormat.getFloatInstance(oFormatOptions);
 		}
 		return oType.oFormat;
@@ -58,13 +64,16 @@ sap.ui.define(['sap/ui/core/format/NumberFormat', 'sap/ui/model/FormatException'
 	 *   constraints, see {@link #constructor}
 	 */
 	function setConstraints(oType, oConstraints) {
-		var vNullable = oConstraints && oConstraints.nullable;
+		var vNullable;
 
 		oType.oConstraints = undefined;
-		if (vNullable === false || vNullable === "false") {
-			oType.oConstraints = {nullable: false};
-		} else if (vNullable !== undefined && vNullable !== true && vNullable !== "true") {
-			jQuery.sap.log.warning("Illegal nullable: " + vNullable, null, oType.getName());
+		if (oConstraints) {
+			vNullable = oConstraints.nullable;
+			if (vNullable === false || vNullable === "false") {
+				oType.oConstraints = {nullable : false};
+			} else if (vNullable !== undefined && vNullable !== true && vNullable !== "true") {
+				Log.warning("Illegal nullable: " + vNullable, null, oType.getName());
+			}
 		}
 
 		oType._handleLocalizationChange();
@@ -77,13 +86,13 @@ sap.ui.define(['sap/ui/core/format/NumberFormat', 'sap/ui/model/FormatException'
 	 * href="http://www.odata.org/documentation/odata-version-2-0/overview#AbstractTypeSystem">
 	 * <code>Edm.Double</code></a>.
 	 *
-	 * In {@link sap.ui.model.odata.v2.ODataModel ODataModel} this type is represented as a
-	 * <code>number</code>.
+	 * In both {@link sap.ui.model.odata.v2.ODataModel} and {@link sap.ui.model.odata.v4.ODataModel}
+	 * this type is represented as a <code>number</code>.
 	 *
 	 * @extends sap.ui.model.odata.type.ODataType
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @alias sap.ui.model.odata.type.Double
 	 * @param {object} [oFormatOptions]
@@ -114,24 +123,32 @@ sap.ui.define(['sap/ui/core/format/NumberFormat', 'sap/ui/model/FormatException'
 	 * @param {number|string} vValue
 	 *   the value to be formatted, which is represented as a number in the model
 	 * @param {string} sTargetType
-	 *   the target type; may be "any", "float", "int", "string".
+	 *   the target type; may be "any", "float", "int", "string", or a type with one of these types
+	 *   as its {@link sap.ui.base.DataType#getPrimitiveType primitive type}.
 	 *   See {@link sap.ui.model.odata.type} for more information.
 	 * @returns {number|string}
 	 *   the formatted output value in the target type; <code>undefined</code> or <code>null</code>
 	 *   are formatted to <code>null</code>
 	 * @throws {sap.ui.model.FormatException}
-	 *   if <code>sTargetType</code> is unsupported
+	 *   If <code>sTargetType</code> is not supported or <code>vValue</code> is not a model value
+	 *   for this type.
 	 * @public
 	 */
-	Double.prototype.formatValue = function(vValue, sTargetType) {
+	Double.prototype.formatValue = function (vValue, sTargetType) {
 		var oFormatOptions,
 			fValue;
 
 		if (vValue === null || vValue === undefined) {
 			return null;
 		}
-		fValue = typeof vValue !== "number" ? parseFloat(vValue) : vValue;
-		switch (sTargetType) {
+		if (typeof vValue === "number") {
+			fValue = vValue;
+		} else if (typeof vValue === "string") {
+			fValue = parseFloat(vValue);
+		} else if (sTargetType !== "any") {
+			throw new FormatException("Illegal " + this.getName() + " value: " + vValue);
+		}
+		switch (this.getPrimitiveType(sTargetType)) {
 		case "any":
 			return vValue;
 		case "float":
@@ -163,8 +180,9 @@ sap.ui.define(['sap/ui/core/format/NumberFormat', 'sap/ui/model/FormatException'
 	 *   <code>null</code>; note that there is no way to enter <code>Infinity</code> or
 	 *   <code>NaN</code> values
 	 * @param {string} sSourceType
-	 *   the source type (the expected type of <code>vValue</code>); may be "float", "int" or
-	 *   "string".
+	 *   the source type (the expected type of <code>vValue</code>); may be "float", "int",
+	 *   "string", or a type with one of these types as its
+	 *   {@link sap.ui.base.DataType#getPrimitiveType primitive type}.
 	 *   See {@link sap.ui.model.odata.type} for more information.
 	 * @returns {number}
 	 *   the parsed value
@@ -174,13 +192,13 @@ sap.ui.define(['sap/ui/core/format/NumberFormat', 'sap/ui/model/FormatException'
 	 * @public
 	 * @since 1.29.0
 	 */
-	Double.prototype.parseValue = function(vValue, sSourceType) {
+	Double.prototype.parseValue = function (vValue, sSourceType) {
 		var fResult;
 
 		if (vValue === null || vValue === "") {
 			return null;
 		}
-		switch (sSourceType) {
+		switch (this.getPrimitiveType(sSourceType)) {
 		case "string":
 			fResult = getFormatter(this).parse(vValue);
 			if (isNaN(fResult)) {
@@ -212,7 +230,6 @@ sap.ui.define(['sap/ui/core/format/NumberFormat', 'sap/ui/model/FormatException'
 	 *
 	 * @param {number} fValue
 	 *   the value to be validated
-	 * @returns {void}
 	 * @throws {sap.ui.model.ValidateException} if the value is not valid
 	 * @public
 	 * @since 1.29.0

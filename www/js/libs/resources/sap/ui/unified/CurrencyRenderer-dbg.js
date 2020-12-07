@@ -1,12 +1,12 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides default renderer for control sap.ui.unified.Menu
-sap.ui.define(['jquery.sap.global'],
-	function(jQuery) {
+sap.ui.define([],
+	function() {
 	"use strict";
 
 
@@ -14,10 +14,11 @@ sap.ui.define(['jquery.sap.global'],
 	/**
 	 * Currency renderer.
 	 *
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 * @namespace
 	 */
 	var CurrencyRenderer = {
+		apiVersion: 2
 	};
 
 	/**
@@ -25,48 +26,41 @@ sap.ui.define(['jquery.sap.global'],
 	 * {@link sap.ui.core.RenderManager}.
 	 *
 	 * @param {sap.ui.core.RenderManager}
-	 *            oRenderManager The RenderManager that can be used for writing to the render-output-buffer.
+	 *            oRm The RenderManager that can be used for writing to the render-output-buffer.
 	 * @param {sap.ui.core.Control}
-	 *            oMenu An object representation of the control that should be rendered
+	 *            oCurrency An object representation of the control that should be rendered
 	 */
 	CurrencyRenderer.render = function(oRm,oCurrency) {
 		var sTooltip = oCurrency.getTooltip_AsString();
 
-		oRm.write("<div");
-		oRm.writeControlData(oCurrency);
+		oRm.openStart("div", oCurrency);
 
 		if (sTooltip) {
-			oRm.writeAttributeEscaped("title", sTooltip);
+			oRm.attr("title", sTooltip);
 		}
 
-		oRm.addClass("sapUiUfdCurrency");
-		if (!oCurrency._hasValue()) {
-			oRm.addClass("sapUiUfdCurrencyNoVal");
+		oRm.class("sapUiUfdCurrency");
+		if (oCurrency._bRenderNoValClass) {
+			oRm.class("sapUiUfdCurrencyNoVal");
 		}
-		oRm.writeClasses();
-		oRm.write(">");
-		oRm.write("<div");
-		oRm.addClass("sapUiUfdCurrencyAlign");
-		oRm.writeClasses();
-		oRm.write(">");
-		oRm.write("<span");
-		oRm.addClass("sapUiUfdCurrencyValue");
-		oRm.writeClasses();
-		oRm.write(">");
-		oRm.writeEscaped(oCurrency.getFormattedValue());
-		oRm.write("</span>");
-		oRm.write("<span");
-		oRm.addClass("sapUiUfdCurrencyCurrency");
-		oRm.writeClasses();
-		oRm.write(">");
-		if (oCurrency.getUseSymbol()) {
-			oRm.writeEscaped(oCurrency.getCurrencySymbol());
-		} else {
-			oRm.writeEscaped(oCurrency.getCurrency());
-		}
-		oRm.write("</span>");
-		oRm.write("</div>");
-		oRm.write("</div>");
+		oRm.openEnd();
+		oRm.openStart("div");
+		oRm.class("sapUiUfdCurrencyAlign");
+		oRm.openEnd();
+		oRm.openStart("span");
+		// The currency value should always be displayed in ltr direction
+		oRm.attr("dir", "ltr");
+		oRm.class("sapUiUfdCurrencyValue");
+		oRm.openEnd();
+		oRm.text(oCurrency.getFormattedValue());
+		oRm.close("span");
+		oRm.openStart("span");
+		oRm.class("sapUiUfdCurrencyCurrency");
+		oRm.openEnd();
+		oRm.text(oCurrency._getCurrency());
+		oRm.close("span");
+		oRm.close("div");
+		oRm.close("div");
 	};
 
 	return CurrencyRenderer;

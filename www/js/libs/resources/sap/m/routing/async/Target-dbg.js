@@ -1,6 +1,6 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 sap.ui.define([], function() {
@@ -25,7 +25,7 @@ sap.ui.define([], function() {
 			return this._oTargetHandler._chainNavigation(function() {
 				return oPromise.then(function(oViewInfo) {
 					that._oTargetHandler.addNavigation({
-						navigationIdentifier : that._oOptions.name,
+						navigationIdentifier : that._oOptions._name,
 						transition: that._oOptions.transition,
 						transitionParameters: that._oOptions.transitionParameters,
 						eventData: vData,
@@ -33,6 +33,12 @@ sap.ui.define([], function() {
 						view: oViewInfo.view,
 						preservePageInSplitContainer: that._oOptions.preservePageInSplitContainer
 					});
+
+					// do not forward the route config to navigation
+					if (vData) {
+						delete vData.routeConfig;
+					}
+
 					return oViewInfo;
 				});
 			});

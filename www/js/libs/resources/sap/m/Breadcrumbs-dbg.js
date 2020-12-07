@@ -1,6 +1,6 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -9,30 +9,52 @@ sap.ui.define([
 	"sap/ui/core/Control",
 	"sap/m/Text",
 	"sap/m/Link",
-	"sap/m/ActionSelect",
-	"sap/m/Button",
+	"sap/m/Select",
 	"sap/ui/core/Item",
 	"sap/ui/core/delegate/ItemNavigation",
 	"sap/ui/core/ResizeHandler",
 	"sap/ui/core/IconPool",
-	"sap/ui/Device"
-], function (Control, Text, Link, Select, Button, Item, ItemNavigation, ResizeHandler, IconPool, Device) {
+	"sap/ui/Device",
+	"sap/m/library",
+	"./BreadcrumbsRenderer"
+], function(
+	Control,
+	Text,
+	Link,
+	Select,
+	Item,
+	ItemNavigation,
+	ResizeHandler,
+	IconPool,
+	Device,
+	library,
+	BreadcrumbsRenderer
+) {
 	"use strict";
 
+	// shortcut for sap.m.SelectType
+	var SelectType = library.SelectType,
+
+		// shortcut for sap.m.BreadCrumbsSeparatorStyle
+		SeparatorStyle = library.BreadcrumbsSeparatorStyle;
+
 	/**
-	 * Constructor for a new Breadcrumbs
+	 * Constructor for a new <code>Breadcrumbs</code>.
 	 *
 	 * @param {string} [sId] ID for the new control, generated automatically if no ID is given
 	 * @param {object} [mSettings] Initial settings for the new control
 	 *
 	 * @class
 	 * Enables users to navigate between items by providing a list of links to previous steps in the user's
-	 * navigation path. The last three steps can be accessed as links directly The remaining links prior to them
+	 * navigation path. The last three steps can be accessed as links directly, while the remaining links prior to them
 	 * are available in a drop-down menu.
+	 *
+	 * @see {@link fiori:https://experience.sap.com/fiori-design-web/breadcrumb/ Breadcrumbs}
+	 *
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
@@ -44,13 +66,24 @@ sap.ui.define([
 	var Breadcrumbs = Control.extend("sap.m.Breadcrumbs", {
 		metadata: {
 			library: "sap.m",
+			interfaces: ["sap.m.IBreadcrumbs"],
+			designtime: "sap/m/designtime/Breadcrumbs.designtime",
 			properties: {
 
 				/**
 				 * Determines the text of current/last element in the Breadcrumbs path.
 				 * @since 1.34
 				 */
-				currentLocationText: {type: "string", group: "Behavior", defaultValue: null}
+				currentLocationText: {type: "string", group: "Behavior", defaultValue: null},
+				/**
+				 * Determines the visual style of the separator between the <code>Breadcrumbs</code> elements.
+				 * @since 1.69
+				 */
+				separatorStyle: {
+					type: "sap.m.BreadcrumbsSeparatorStyle",
+					group: "Appearance",
+					defaultValue: SeparatorStyle.Slash
+				}
 			},
 			aggregations: {
 
@@ -73,21 +106,55 @@ sap.ui.define([
 		}
 	});
 
+	/*
+	 * STATIC MEMBERS
+	 */
+
+	Breadcrumbs.STYLE_MAPPER = {
+		Slash: "/",
+		BackSlash: "\\",
+		DoubleSlash: "//",
+		DoubleBackSlash: "\\\\",
+		GreaterThan: ">",
+		DoubleGreaterThan: ">>"
+	};
+
 	/*************************************** Framework lifecycle events ******************************************/
 
+	Breadcrumbs.prototype.init = function () {
+		this._sSeparatorSymbol = Breadcrumbs.STYLE_MAPPER[this.getSeparatorStyle()];
+	};
+
 	Breadcrumbs.prototype.onBeforeRendering = function () {
+		this.bRenderingPhase = true;
+
+		if (this._sResizeListenerId) {
+			ResizeHandler.deregister(this._sResizeListenerId);
+			this._sResizeListenerId = null;
+		}
+
 		if (this._bControlsInfoCached) {
 			this._updateSelect(true);
 		}
 	};
 
 	Breadcrumbs.prototype.onAfterRendering = function () {
+		if (!this._sResizeListenerId) {
+			this._sResizeListenerId = ResizeHandler.register(this, this._handleScreenResize.bind(this));
+		}
+
 		if (!this._bControlsInfoCached) {
 			this._updateSelect(true);
 			return;
 		}
 
 		this._configureKeyboardHandling();
+
+		this.bRenderingPhase = false;
+	};
+
+	Breadcrumbs.prototype.onThemeChanged = function () {
+		this._resetControl();
 	};
 
 	Breadcrumbs.prototype.exit = function () {
@@ -99,27 +166,10 @@ sap.ui.define([
 
 	Breadcrumbs.PAGEUP_AND_PAGEDOWN_JUMP_SIZE = 5;
 
-	Breadcrumbs._getResourceBundle = function () {
-		return sap.ui.getCore().getLibraryResourceBundle("sap.m");
-	};
-
 	/*************************************** Internal aggregation handling  ******************************************/
 
 	Breadcrumbs.prototype._getAugmentedId = function (sSuffix) {
 		return this.getId() + "-" + sSuffix;
-	};
-
-	Breadcrumbs.prototype._getSelectButton = function () {
-		if (!this._closeButton) {
-			this._closeButton = new Button({
-				id: this._getAugmentedId("closeButton"),
-				text: Breadcrumbs._getResourceBundle().getText("BREADCRUMB_CLOSE"),
-				press: this._selectCancelButtonHandler.bind(this),
-				visible: Device.system.phone
-			});
-		}
-
-		return this._closeButton;
 	};
 
 	Breadcrumbs.prototype._getSelect = function () {
@@ -130,20 +180,28 @@ sap.ui.define([
 				forceSelection: false,
 				autoAdjustWidth: true,
 				icon: IconPool.getIconURI("slim-arrow-down"),
-				type: sap.m.SelectType.IconOnly,
-				buttons: [this._getSelectButton()]
-			})));
+				type: SelectType.IconOnly,
+				tooltip: BreadcrumbsRenderer._getResourceBundleText("BREADCRUMB_SELECT_TOOLTIP")
+			})), true);
 		}
 		return this.getAggregation("_select");
 	};
 
 	Breadcrumbs.prototype._getCurrentLocation = function () {
 		if (!this.getAggregation("_currentLocation")) {
-			this.setAggregation("_currentLocation", new Text({
+			var oCurrentLocation = new Text({
 				id: this._getAugmentedId("currentText"),
 				text: this.getCurrentLocationText(),
 				wrapping: false
-			}).addStyleClass("sapMBreadcrumbsCurrentLocation"));
+			}).addStyleClass("sapMBreadcrumbsCurrentLocation");
+
+			oCurrentLocation.addEventDelegate({
+				onAfterRendering: function () {
+					oCurrentLocation.$().attr("aria-current", "page");
+				}
+			});
+
+			this.setAggregation("_currentLocation", oCurrentLocation).addStyleClass("sapMBreadcrumbsCurrentLocation");
 		}
 		return this.getAggregation("_currentLocation");
 	};
@@ -176,7 +234,7 @@ sap.ui.define([
 	};
 
 	Breadcrumbs.prototype.removeAllLinks = function () {
-		var aLinks = this.getAggregation("links");
+		var aLinks = this.getAggregation("links", []);
 		var vResult = this.removeAllAggregation.apply(this, fnConvertArguments("links", arguments));
 		aLinks.forEach(this._deregisterControlListener, this);
 		this._resetControl();
@@ -184,7 +242,7 @@ sap.ui.define([
 	};
 
 	Breadcrumbs.prototype.destroyLinks = function () {
-		var aLinks = this.getAggregation("links");
+		var aLinks = this.getAggregation("links", []);
 		var vResult = this.destroyAggregation.apply(this, fnConvertArguments("links", arguments));
 		aLinks.forEach(this._deregisterControlListener, this);
 		this._resetControl();
@@ -216,8 +274,6 @@ sap.ui.define([
 			oSelect.setSelectedIndex(0);
 		} else {
 			oSelect.setSelectedItem(null);
-			/* this is a fix for a bug in the select, this line should be romeved after it has been fixed in the select */
-			oSelect.getPicker().getCustomHeader().getContentLeft()[0].setValue(null);
 		}
 
 		Select.prototype._onBeforeOpenDialog.call(oSelect);
@@ -295,10 +351,6 @@ sap.ui.define([
 		}
 	};
 
-	Breadcrumbs.prototype._selectCancelButtonHandler = function () {
-		this._getSelect().close();
-	};
-
 	Breadcrumbs.prototype._getItemsForMobile = function () {
 		var oItems = this.getLinks();
 
@@ -321,7 +373,7 @@ sap.ui.define([
 			oControlsDistribution = this._getControlDistribution();
 
 		if (!this._bControlDistributionCached || bInvalidateDistribution) {
-			oSelect.removeAllItems();
+			oSelect.destroyItems();
 			aControlsForSelect = Device.system.phone ? this._getItemsForMobile() : oControlsDistribution.aControlsForSelect;
 			aControlsForSelect.map(this._createSelectItem).reverse().forEach(oSelect.insertItem, oSelect);
 			this._bControlDistributionCached = true;
@@ -330,26 +382,31 @@ sap.ui.define([
 
 		oSelect.setVisible(!!oControlsDistribution.aControlsForSelect.length);
 
-		if (!this._sResizeListenerId) {
+		if (!this._sResizeListenerId && !this.bRenderingPhase) {
 			this._sResizeListenerId = ResizeHandler.register(this, this._handleScreenResize.bind(this));
 		}
 	};
 
 	Breadcrumbs.prototype._getControlsForBreadcrumbTrail = function () {
+		var aVisibleControls;
+
 		if (this._bControlDistributionCached && this._oDistributedControls) {
 			return this._oDistributedControls.aControlsForBreadcrumbTrail;
 		}
+
+		aVisibleControls = this.getLinks().filter(function (oLink) { return oLink.getVisible(); });
+
 		if (this.getCurrentLocationText()) {
-			return this.getLinks().concat([this._getCurrentLocation()]);
+			return aVisibleControls.concat([this._getCurrentLocation()]);
 		}
-		return this.getLinks();
+		return aVisibleControls;
 	};
 
 	Breadcrumbs.prototype._getControlInfo = function (oControl) {
 		return {
 			id: oControl.getId(),
 			control: oControl,
-			width: oControl.$().parent().outerWidth(true),
+			width: getElementWidth(oControl.$().parent()),
 			bCanOverflow: oControl instanceof Link
 		};
 	};
@@ -361,11 +418,15 @@ sap.ui.define([
 		return this._oDistributedControls;
 	};
 
+	Breadcrumbs.prototype._getSelectWidth = function() {
+		return this._getSelect().getVisible() && this._iSelectWidth || 0;
+	};
+
 	Breadcrumbs.prototype._determineControlDistribution = function (iMaxContentSize) {
 		var index,
 			oControlInfo,
 			aControlInfo = this._getControlsInfo().aControlInfo,
-			iSelectWidth = this._iSelectWidth,
+			iSelectWidth = this._getSelectWidth(),
 			aControlsForSelect = [],
 			aControlsForBreadcrumbTrail = [],
 			iUsedSpace = iSelectWidth; // account for the selectWidth initially;
@@ -400,14 +461,15 @@ sap.ui.define([
 	};
 
 	/**
-	 * Stores the sizes and other info of controls so they don't need to be recalculated again until they change
+	 * Stores the sizes and other info of controls so they don't need to be recalculated again until they change.
 	 * @private
+	 * @returns {Object} The <code>Breadcrumbs</code> control information
 	 */
 	Breadcrumbs.prototype._getControlsInfo = function () {
 		if (!this._bControlsInfoCached) {
-			this._iSelectWidth = this._getSelect().$().parent().outerWidth(true) || 0;
+			this._iSelectWidth = getElementWidth(this._getSelect().$().parent()) || 0;
 			this._aControlInfo = this._getControlsForBreadcrumbTrail().map(this._getControlInfo);
-			this._iContainerSize = this.$().outerWidth(true);
+			this._iContainerSize = getElementWidth(this.$());
 			this._bControlsInfoCached = true;
 		}
 
@@ -482,15 +544,25 @@ sap.ui.define([
 			aItemsToNavigate = this._getItemsToNavigate(),
 			aNavigationDomRefs = [];
 
+		if (aItemsToNavigate.length === 0) {
+			return;
+		}
+
 		aItemsToNavigate.forEach(function (oItem, iIndex) {
 			if (iIndex === 0) {
-				oItem.$().attr("tabIndex", "0");
+				oItem.$().attr("tabindex", "0");
 			}
-			oItem.$().attr("tabIndex", "-1");
+			oItem.$().attr("tabindex", "-1");
 			aNavigationDomRefs.push(oItem.getDomRef());
 		});
 
 		this.addDelegate(oItemNavigation);
+		oItemNavigation.setDisabledModifiers({
+			sapnext : ["alt"],
+			sapprevious : ["alt"],
+			saphome : ["alt"],
+			sapend : ["alt"]
+		});
 		oItemNavigation.setCycling(false);
 		oItemNavigation.setPageSize(Breadcrumbs.PAGEUP_AND_PAGEDOWN_JUMP_SIZE);
 		oItemNavigation.setRootDomRef(this.getDomRef());
@@ -534,6 +606,23 @@ sap.ui.define([
 	};
 
 	/**
+	 * Custom setter for the <code>Breadcrumbs</code> separator style.
+	 *
+	 * @returns {sap.m.Breadcrumbs} this
+	 * @param {sap.m.BreadcrumbsSeparatorStyle} sSeparatorStyle
+	 * @public
+	 * @since 1.71
+	 */
+	Breadcrumbs.prototype.setSeparatorStyle = function (sSeparatorStyle) {
+		this.setProperty("separatorStyle", sSeparatorStyle);
+		var sSeparatorSymbol = Breadcrumbs.STYLE_MAPPER[this.getSeparatorStyle()];
+		if (sSeparatorSymbol){
+			this._sSeparatorSymbol = sSeparatorSymbol;
+		}
+		return this;
+	};
+
+	/**
 	 * Resets all of the internally cached values used by the control and invalidates it
 	 *
 	 * @returns {object} this
@@ -556,6 +645,16 @@ sap.ui.define([
 		return this;
 	};
 
+	// helper functions
+	function getElementWidth($element) {
+		var iMargins;
+		if ($element.length) {
+			iMargins = $element.outerWidth(true) - $element.outerWidth();
+
+			return $element.get(0).getBoundingClientRect().width + iMargins;
+		}
+	}
+
 	return Breadcrumbs;
 
-}, /* bExport= */ true);
+});

@@ -1,10 +1,10 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/routing/History', 'sap/ui/core/routing/Router', './TargetHandler', './Router'],
-	function(jQuery, BaseObject, History, Router, TargetHandler, MobileRouter) {
+sap.ui.define(['sap/ui/base/Object', './TargetHandler', './Router', "sap/base/Log"],
+	function(BaseObject, TargetHandler, MobileRouter, Log) {
 	"use strict";
 
 
@@ -39,14 +39,14 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/routing/H
 	 *
 	 * @deprecated Since 1.28 use {@link sap.m.routing.Router} or {@link sap.m.routing.Targets} instead. The functionality of the routematched handler is built in into these two classes, there is no need to create this anymore.
 	 * @param {sap.ui.core.routing.Router} router - A router that creates views</br>
-	 * @param {boolean} closeDialogs - the default is true - will close all open dialogs before navigating, if set to true. If set to false it will just navigate without closing dialogs.
+	 * @param {boolean} [closeDialogs=true] - If set to <code>true</code> it will close all open dialogs before navigating. If set to <code>false</code> it will just navigate without closing dialogs.
 	 * @public
 	 * @alias sap.m.routing.RouteMatchedHandler
 	 */
 	var RouteMatchedHandler = BaseObject.extend("sap.m.routing.RouteMatchedHandler", {
 		constructor : function (oRouter, bCloseDialogs) {
 			if (oRouter instanceof MobileRouter) {
-				jQuery.sap.log.warning("A sap.m.routing.Router is used together with a sap.m.routing.RouteMatchedHandler (deprecated)." +
+				Log.warning("A sap.m.routing.Router is used together with an sap.m.routing.RouteMatchedHandler (deprecated)." +
 					"The RoutematchedHandler is not taking over triggering the navigations, the Router will do it.", this);
 				return;
 			}
@@ -190,4 +190,4 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/routing/H
 
 	return RouteMatchedHandler;
 
-}, /* bExport= */ true);
+});

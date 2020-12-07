@@ -1,12 +1,35 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.ui.unified.ShellLayout.
-sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap/ui/core/Popup', 'sap/ui/core/theming/Parameters', './SplitContainer', './library', 'jquery.sap.dom', 'jquery.sap.script'],
-	function(jQuery, Device, Control, Popup, Parameters, SplitContainer, library/* , jQuerySap1, jQuerySap */) {
+sap.ui.define([
+	'sap/ui/Device',
+	'sap/ui/core/Control',
+	'sap/ui/core/Popup',
+	'sap/ui/core/theming/Parameters',
+	'./SplitContainer',
+	'./library',
+	'./ShellLayoutRenderer',
+	'sap/ui/dom/containsOrEquals',
+	'sap/base/Log',
+	"sap/ui/thirdparty/jquery",
+	// jQuery Plugin "firstFocusableDomRef"
+	'sap/ui/dom/jquery/Focusable'
+], function(
+	Device,
+	Control,
+	Popup,
+	Parameters,
+	SplitContainer,
+	library,
+	ShellLayoutRenderer,
+	containsOrEquals,
+	Log,
+	jQuery
+) {
 	"use strict";
 
 
@@ -25,12 +48,13 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
 	 * @since 1.25.0
 	 * @alias sap.ui.unified.ShellLayout
+	 * @deprecated Since version 1.44.0.
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
 	 */
 	var ShellLayout = Control.extend("sap.ui.unified.ShellLayout", /** @lends sap.ui.unified.ShellLayout.prototype */ { metadata : {
@@ -59,12 +83,12 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap
 			/**
 			 * The content to appear in the main canvas.
 			 */
-			content : {type : "sap.ui.core.Control", multiple : true, singularName : "content"},
+			content : {type : "sap.ui.core.Control", multiple : true, singularName : "content", forwarding: {idSuffix: "-container", aggregation: "content"}},
 
 			/**
 			 * The content to appear in the pane area.
 			 */
-			paneContent : {type : "sap.ui.core.Control", multiple : true, singularName : "paneContent"},
+			paneContent : {type : "sap.ui.core.Control", multiple : true, singularName : "paneContent", forwarding: {idSuffix: "-container", aggregation: "secondaryContent"}},
 
 			/**
 			 * The control to appear in the header area.
@@ -139,7 +163,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap
 
 		function headerFocus(oBrowserEvent){
 			var oEvent = jQuery.event.fix(oBrowserEvent);
-			if (jQuery.sap.containsOrEquals(that.getDomRef("hdr"), oEvent.target)) {
+			if (containsOrEquals(that.getDomRef("hdr"), oEvent.target)) {
 				that._timedHideHeader(oEvent.type === "focus");
 			}
 		}
@@ -160,12 +184,12 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap
 	ShellLayout.prototype.onfocusin = function(oEvent) {
 		var sId = this.getId();
 
-		if (oEvent.target.id === sId + "-curt-focusDummyOut") {
+		if (oEvent.target.id === sId + "-curt-focusDummyOut" && this.$("hdrcntnt").firstFocusableDomRef()) {
 			// Jump back to shell when you reach the end of the curtain
-			jQuery.sap.focus(this.$("hdrcntnt").firstFocusableDomRef());
-		} else if (oEvent.target.id === sId + "-main-focusDummyOut") {
+			this.$("hdrcntnt").firstFocusableDomRef().focus();
+		} else if (oEvent.target.id === sId + "-main-focusDummyOut" && this.$("curtcntnt").firstFocusableDomRef()) {
 			// Jump to the curtain if it is open (can only reached by tabbing back when curtain is open)
-			jQuery.sap.focus(this.$("curtcntnt").firstFocusableDomRef());
+			this.$("curtcntnt").firstFocusableDomRef().focus();
 		}
 	};
 
@@ -294,58 +318,6 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap
 	};
 
 
-	ShellLayout.prototype.getContent = function() {
-		return this._cont.getContent();
-	};
-	ShellLayout.prototype.insertContent = function(oContent, iIndex) {
-		this._cont.insertContent(oContent, iIndex);
-		return this;
-	};
-	ShellLayout.prototype.addContent = function(oContent) {
-		this._cont.addContent(oContent);
-		return this;
-	};
-	ShellLayout.prototype.removeContent = function(vIndex) {
-		return this._cont.removeContent(vIndex);
-	};
-	ShellLayout.prototype.removeAllContent = function() {
-		return this._cont.removeAllContent();
-	};
-	ShellLayout.prototype.destroyContent = function() {
-		this._cont.destroyContent();
-		return this;
-	};
-	ShellLayout.prototype.indexOfContent = function(oContent) {
-		return this._cont.indexOfContent(oContent);
-	};
-
-
-	ShellLayout.prototype.getPaneContent = function() {
-		return this._cont.getSecondaryContent();
-	};
-	ShellLayout.prototype.insertPaneContent = function(oContent, iIndex) {
-		this._cont.insertSecondaryContent(oContent, iIndex);
-		return this;
-	};
-	ShellLayout.prototype.addPaneContent = function(oContent) {
-		this._cont.addSecondaryContent(oContent);
-		return this;
-	};
-	ShellLayout.prototype.removePaneContent = function(vIndex) {
-		return this._cont.removeSecondaryContent(vIndex);
-	};
-	ShellLayout.prototype.removeAllPaneContent = function() {
-		return this._cont.removeAllSecondaryContent();
-	};
-	ShellLayout.prototype.destroyPaneContent = function() {
-		this._cont.destroySecondaryContent();
-		return this;
-	};
-	ShellLayout.prototype.indexOfPaneContent = function(oContent) {
-		return this._cont.indexOfSecondaryContent(oContent);
-	};
-
-
 	ShellLayout.prototype.setHeader = function(oHeader) {
 		this.setAggregation("header", oHeader, true);
 		oHeader = this.getHeader();
@@ -435,7 +407,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap
 		var bRendered = !!this.getDomRef();
 		var res = fMod.apply(this, [bRendered]);
 		if (bRendered && oDoIfRendered) {
-			if (oDoIfRendered instanceof sap.ui.unified._ContentRenderer) {
+			if (oDoIfRendered instanceof library._ContentRenderer) {
 				oDoIfRendered.render();
 			} else {
 				oDoIfRendered.apply(this);
@@ -455,21 +427,21 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap
 		}
 
 		if (bWasVisible != this._showHeader && this._isHeaderHidingActive()){
-			jQuery.sap.delayedCall(500, this, function(){
+			setTimeout(function(){
 				try {
 					var oResizeEvent = document.createEvent("UIEvents");
 					oResizeEvent.initUIEvent("resize", true, false, window, 0);
 					window.dispatchEvent(oResizeEvent);
 				} catch (e) {
-					jQuery.sap.log.error(e);
+					Log.error(e);
 				}
-			});
+			}, 500);
 		}
 	};
 
 	ShellLayout.prototype._timedHideHeader = function(bClearOnly){
 		if (this._headerHidingTimer) {
-			jQuery.sap.clearDelayedCall(this._headerHidingTimer);
+			clearTimeout(this._headerHidingTimer);
 			this._headerHidingTimer = null;
 		}
 
@@ -477,16 +449,16 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap
 			return;
 		}
 
-		this._headerHidingTimer = jQuery.sap.delayedCall(this._iHeaderHidingDelay, this, function(){
-			if (this._isHeaderHidingActive() && this._iHeaderHidingDelay > 0 && !jQuery.sap.containsOrEquals(this.getDomRef("hdr"), document.activeElement)) {
+		this._headerHidingTimer = setTimeout(function(){
+			if (this._isHeaderHidingActive() && this._iHeaderHidingDelay > 0 && !containsOrEquals(this.getDomRef("hdr"), document.activeElement)) {
 				this._doShowHeader(false);
 			}
-		});
+		}.bind(this), this._iHeaderHidingDelay);
 	};
 
 	ShellLayout.prototype._timedCurtainClosed = function(bClearOnly){
 		if (this._curtainClosedTimer) {
-			jQuery.sap.clearDelayedCall(this._curtainClosedTimer);
+			clearTimeout(this._curtainClosedTimer);
 			this._curtainClosedTimer = null;
 		}
 
@@ -494,48 +466,48 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap
 			return;
 		}
 
-		var duration = parseInt(Parameters.get("sapUiUfdShellAnimDuration"), 10);
+		var duration = parseInt(Parameters.get("_sap_ui_unified_ShellLayout_AnimDuration"));
 		if (!this._animation || (Device.browser.internet_explorer && Device.browser.version < 10)) {
 			duration = 0;
 		}
 
-		this._curtainClosedTimer = jQuery.sap.delayedCall(duration, this, function(){
+		this._curtainClosedTimer = setTimeout(function(){
 			this._curtainClosedTimer = null;
 			this.$("curt").css("z-index", "");
 			this.$("hdr").css("z-index", "");
 			this.$("brand").css("z-index", "");
 			this.$().toggleClass("sapUiUfdShellCurtainClosed", true);
-		});
+		}.bind(this), duration);
 	};
 
 	ShellLayout.prototype._isHeaderHidingActive = function(){
 		// Not active if no touch, the curtain is open or the hiding is deactivated via API
-		if (ShellLayout._HEADER_ALWAYS_VISIBLE || this.getShowCurtain() || !this.getHeaderHiding() || sap.ui.unified._iNumberOfOpenedShellOverlays > 0 || !this.getHeaderVisible()) {
+		if (ShellLayout._HEADER_ALWAYS_VISIBLE || this.getShowCurtain() || !this.getHeaderHiding() || library._iNumberOfOpenedShellOverlays > 0 || !this.getHeaderVisible()) {
 			return false;
 		}
 		return true;
 	};
 
-	ShellLayout.prototype._refreshCSSWorkaround = function() {
-		if (!Device.browser.webkit || !Device.support.touch) {
-			return;
-		}
-
-		if (this._cssWorkaroundTimer) {
-			jQuery.sap.clearDelayedCall(this._cssWorkaroundTimer);
-			this._cssWorkaroundTimer = null;
-		}
-		this.$("css").remove();
-
-		this._cssWorkaroundTimer = jQuery.sap.delayedCall(10, this, function(){
-			this._cssWorkaroundTimer = null;
-			jQuery.sap.log.debug("sap.ui.unified.ShellLayout: CSS Workaround applied.");
-			jQuery("head").append("<link type='text/css' rel='stylesheet' id='" + this.getId() + "-css' href='data:text/css;base64,LnNhcFVpVWZkU2hlbGxDaHJvbWVSZXBhaW50e291dGxpbmUtY29sb3I6aW5pdGlhbDt9'/>");
-			this._cssWorkaroundTimer = jQuery.sap.delayedCall(100, this, function(){
-				this.$("css").remove();
-			});
-		});
-	};
+//	ShellLayout.prototype._refreshCSSWorkaround = function() {
+//		if (!Device.browser.webkit || !Device.support.touch) {
+//			return;
+//		}
+//
+//		if (this._cssWorkaroundTimer) {
+//			clearTimeout(this._cssWorkaroundTimer);
+//			this._cssWorkaroundTimer = null;
+//		}
+//		this.$("css").remove();
+//
+//		this._cssWorkaroundTimer = setTimeout(function(){
+//			this._cssWorkaroundTimer = null;
+//			Log.debug("sap.ui.unified.ShellLayout: CSS Workaround applied.");
+//			jQuery("head").append("<link type='text/css' rel='stylesheet' id='" + this.getId() + "-css' href='data:text/css;base64,LnNhcFVpVWZkU2hlbGxDaHJvbWVSZXBhaW50e291dGxpbmUtY29sb3I6aW5pdGlhbDt9'>");
+//			this._cssWorkaroundTimer = setTimeout(function(){
+//				this.$("css").remove();
+//			}.bind(this), 100);
+//		}.bind(this), 10);
+//	};
 
 	ShellLayout.prototype._setSidePaneWidth = function(sRange){
 		if (!sRange) {
@@ -566,22 +538,22 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap
 			return false;
 		}
 
-		this._repaint(oDom);
+		//this._repaint(oDom);
 		this._timedHideHeader();
 
 		return true;
 	};
 
-	ShellLayout.prototype._repaint = function(oDom){
-		if (Device.browser.webkit) {
-			var display = oDom.style.display;
-			oDom.style.display = "none";
-			oDom.offsetHeight;
-			oDom.style.display = display;
-
-			this._refreshCSSWorkaround();
-		}
-	};
+//	ShellLayout.prototype._repaint = function(oDom){
+//		if (Device.browser.webkit) {
+//			var display = oDom.style.display;
+//			oDom.style.display = "none";
+//			oDom.offsetHeight;
+//			oDom.style.display = display;
+//
+//			this._refreshCSSWorkaround();
+//		}
+//	};
 
 	//Needed by sap.ui.unified.ShellOverlay
 	ShellLayout.prototype._getSearchWidth = function(){
@@ -590,4 +562,4 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/core/Control', 'sap
 
 	return ShellLayout;
 
-}, /* bExport= */ true);
+});

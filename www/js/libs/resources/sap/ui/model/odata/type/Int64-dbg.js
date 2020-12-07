@@ -1,21 +1,27 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatException',
-               'sap/ui/model/ParseException', 'sap/ui/core/format/NumberFormat',
-               'sap/ui/model/ValidateException'],
-	function(ODataType, FormatException, ParseException, NumberFormat, ValidateException) {
+sap.ui.define([
+	"sap/base/Log",
+	"sap/ui/core/format/NumberFormat",
+	"sap/ui/model/FormatException",
+	"sap/ui/model/ParseException",
+	"sap/ui/model/ValidateException",
+	"sap/ui/model/odata/type/ODataType",
+	"sap/ui/thirdparty/jquery"
+], function (Log, NumberFormat, FormatException, ParseException, ValidateException, ODataType,
+		jQuery) {
 	"use strict";
 
 	var rInteger = /^[-+]?(\d+)$/, // user input for an Int64 w/o the sign
 		// The number range of an Int64
-		oRange = {minimum: "-9223372036854775808", maximum: "9223372036854775807"},
+		oRange = {minimum : "-9223372036854775808", maximum : "9223372036854775807"},
 		// The values Number.MIN_SAFE_INTEGER and Number.MAX_SAFE_INTEGER are the largest integer
 		// n such that n and n + 1 are both exactly representable as a Number value.
-		oSafeRange = {minimum: "-9007199254740991", maximum: "9007199254740991"};
+		oSafeRange = {minimum : "-9007199254740991", maximum : "9007199254740991"};
 
 	/**
 	 * Checks whether <code>sValue</code> is in the given range.
@@ -24,7 +30,7 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 	 * @param {string} sValue
 	 *   value to be checked
 	 * @param {object} oRange
-	 *   the allowed range object with minimum and maximum as <code>string</string>
+	 *   the allowed range object with minimum and maximum as <code>string</code>
 	 * @returns {string}
 	 *   the error text or <code>undefined</code> if the check was successful
 	 */
@@ -41,9 +47,9 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 			}
 			if (aMatches[1].length > sAbsoluteLimit.length || aMatches[1] > sAbsoluteLimit) {
 				if (bNegative) {
-					return getText("EnterIntMin", [oType.formatValue(oRange.minimum, "string")]);
+					return getText("EnterNumberMin", [oType.formatValue(oRange.minimum, "string")]);
 				} else {
-					return getText("EnterIntMax", [oType.formatValue(oRange.maximum, "string")]);
+					return getText("EnterNumberMax", [oType.formatValue(oRange.maximum, "string")]);
 				}
 			}
 			return undefined;
@@ -62,7 +68,7 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 		var oFormatOptions;
 
 		if (!oType.oFormat) {
-			oFormatOptions = jQuery.extend({groupingEnabled: true}, oType.oFormatOptions);
+			oFormatOptions = jQuery.extend({groupingEnabled : true}, oType.oFormatOptions);
 			oFormatOptions.parseAsString = true;
 			oType.oFormat = NumberFormat.getIntegerInstance(oFormatOptions);
 		}
@@ -104,13 +110,16 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 	 *   constraints, see {@link #constructor}
 	 */
 	function setConstraints(oType, oConstraints) {
-		var vNullable = oConstraints && oConstraints.nullable;
+		var vNullable;
 
-		if (vNullable === false || vNullable === "false") {
-			oType.oConstraints = oType.oConstraints || {};
-			oType.oConstraints.nullable = false;
-		} else if (vNullable !== undefined && vNullable !== true && vNullable !== "true") {
-			jQuery.sap.log.warning("Illegal nullable: " + vNullable, null, oType.getName());
+		oType.oConstraints = undefined;
+		if (oConstraints) {
+			vNullable = oConstraints.nullable;
+			if (vNullable === false || vNullable === "false") {
+				oType.oConstraints = {nullable : false};
+			} else if (vNullable !== undefined && vNullable !== true && vNullable !== "true") {
+				Log.warning("Illegal nullable: " + vNullable, null, oType.getName());
+			}
 		}
 		oType._handleLocalizationChange();
 	}
@@ -122,15 +131,14 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 	 * href="http://www.odata.org/documentation/odata-version-2-0/overview#AbstractTypeSystem">
 	 * <code>Edm.Int64</code></a>.
 	 *
-	 * In {@link sap.ui.model.odata.v2.ODataModel ODataModel} this type is represented as a
-	 * <code>string</code>.
+	 * In both {@link sap.ui.model.odata.v2.ODataModel} and {@link sap.ui.model.odata.v4.ODataModel}
+	 * this type is represented as a <code>string</code>.
 	 *
 	 * @extends sap.ui.model.odata.type.ODataType
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
-	 * @constructor
 	 * @alias sap.ui.model.odata.type.Int64
 	 * @param {object} [oFormatOptions]
 	 *   format options as defined in {@link sap.ui.core.format.NumberFormat}. In contrast to
@@ -157,7 +165,8 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 	 * @param {string} sValue
 	 *   the value to be formatted, which is represented as a string in the model
 	 * @param {string} sTargetType
-	 *   the target type; may be "any", "float", "int" or "string".
+	 *   the target type; may be "any", "float", "int", "string", or a type with one of these types
+	 *   as its {@link sap.ui.base.DataType#getPrimitiveType primitive type}.
 	 *   See {@link sap.ui.model.odata.type} for more information.
 	 * @returns {number|string}
 	 *   the formatted output value in the target type; <code>undefined</code> or <code>null</code>
@@ -168,13 +177,13 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 	 *   exceeds <code>Number.MIN/MAX_SAFE_INTEGER</code>
 	 * @public
 	 */
-	Int64.prototype.formatValue = function(sValue, sTargetType) {
+	Int64.prototype.formatValue = function (sValue, sTargetType) {
 		var sErrorText;
 
 		if (sValue === null || sValue === undefined) {
 			return null;
 		}
-		switch (sTargetType) {
+		switch (this.getPrimitiveType(sTargetType)) {
 		case "any":
 			return sValue;
 		case "float":
@@ -183,7 +192,7 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 			if (sErrorText) {
 				throw new FormatException(sErrorText);
 			}
-			return parseInt(sValue, 10);
+			return parseInt(sValue);
 		case "string":
 			return getFormatter(this).format(sValue);
 		default:
@@ -219,8 +228,9 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 	 *   the value to be parsed; the empty string and <code>null</code> are parsed to
 	 *   <code>null</code>
 	 * @param {string} sSourceType
-	 *   the source type (the expected type of <code>vValue</code>); may be "float", "int" or
-	 *   "string".
+	 *   the source type (the expected type of <code>vValue</code>); may be "float", "int",
+	 *   "string", or a type with one of these types as its
+	 *   {@link sap.ui.base.DataType#getPrimitiveType primitive type}.
 	 *   See {@link sap.ui.model.odata.type} for more information.
 	 * @returns {string}
 	 *   the parsed value
@@ -229,13 +239,13 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 	 *   Int64
 	 * @public
 	 */
-	Int64.prototype.parseValue = function(vValue, sSourceType) {
+	Int64.prototype.parseValue = function (vValue, sSourceType) {
 		var sResult;
 
 		if (vValue === null || vValue === "") {
 			return null;
 		}
-		switch (sSourceType) {
+		switch (this.getPrimitiveType(sSourceType)) {
 		case "string":
 			sResult = getFormatter(this).parse(vValue);
 			if (!sResult) {
@@ -245,8 +255,8 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 		case "int":
 		case "float":
 			sResult = NumberFormat.getIntegerInstance({
-					maxIntegerDigits: Infinity,
-					groupingEnabled: false
+					maxIntegerDigits : Infinity,
+					groupingEnabled : false
 				}).format(vValue);
 			break;
 		default:
@@ -262,7 +272,6 @@ sap.ui.define(['sap/ui/model/odata/type/ODataType', 'sap/ui/model/FormatExceptio
 	 *
 	 * @param {string} sValue
 	 *   the value to be validated
-	 * @returns {void}
 	 * @throws {sap.ui.model.ValidateException} if the value is not valid
 	 * @public
 	 */

@@ -1,12 +1,18 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides class sap.ui.core.support.plugins.Selector (Selector support plugin)
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Popup', 'sap/ui/core/support/Plugin'],
-	function(jQuery, Popup, Plugin) {
+sap.ui.define([
+	'sap/ui/core/Popup',
+	'../Plugin',
+	'../Support',
+	"sap/ui/thirdparty/jquery",
+	"sap/base/util/uid"
+],
+	function(Popup, Plugin, Support, jQueryDOM, uid) {
 	"use strict";
 
 
@@ -17,26 +23,22 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Popup', 'sap/ui/core/support/Pl
 		 * Creates an instance of sap.ui.core.support.plugins.Selector.
 		 * @class This class represents the selector plugin for the support tool functionality of UI5. This class is internal and all its functions must not be used by an application.
 		 *
-		 * @abstract
 		 * @extends sap.ui.core.support.Plugin
-		 * @version 1.36.8
-		 * @constructor
+		 * @version 1.84.1
 		 * @private
 		 * @alias sap.ui.core.support.plugins.Selector
 		 */
 		var Selector = Plugin.extend("sap.ui.core.support.plugins.Selector", {
 			constructor : function(oSupportStub) {
 				Plugin.apply(this, ["sapUiSupportSelector", "", oSupportStub]);
-
-				if (this.isToolPlugin()) {
-					throw Error();
-				}
-
 				this._aEventIds = [this.getId() + "Highlight"];
 				this._oPopup = new Popup();
 			}
 		});
 
+		Selector.prototype.isToolPlugin = function(){
+			return false;
+		};
 
 		/**
 		 * Handler for sapUiSupportSelectorHighlight event
@@ -55,16 +57,16 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Popup', 'sap/ui/core/support/Pl
 			var jPopupRef;
 
 			if (!this._sPopupId) {
-				this._sPopupId = this.getId() + "-" + jQuery.sap.uid();
+				this._sPopupId = this.getId() + "-" + uid();
 				var rm = sap.ui.getCore().createRenderManager();
 				rm.write("<div id='" + this._sPopupId + "' style='border: 2px solid rgb(0, 128, 0); background-color: rgba(0, 128, 0, .55);'></div>");
 				rm.flush(sap.ui.getCore().getStaticAreaRef(), false, true);
 				rm.destroy();
 
-				jPopupRef = jQuery.sap.byId(this._sPopupId);
+				jPopupRef = jQueryDOM(document.getElementById(this._sPopupId));
 				this._oPopup.setContent(jPopupRef[0]);
 			} else {
-				jPopupRef = jQuery.sap.byId(this._sPopupId);
+				jPopupRef = jQueryDOM(document.getElementById(this._sPopupId));
 			}
 
 			var that = this;
@@ -85,8 +87,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Popup', 'sap/ui/core/support/Pl
 				that._oPopup.close(0);
 			};
 
-			jPopupRef.bind("click", this._fCloseHandler);
-			jQuery(document).bind("mousedown", this._fSelectHandler);
+			jPopupRef.on("click", this._fCloseHandler);
+			jQuery(document).on("mousedown", this._fSelectHandler);
 
 		};
 
@@ -94,11 +96,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Popup', 'sap/ui/core/support/Pl
 		Selector.prototype.exit = function(oSupportStub){
 			this._oPopup.close(0);
 			if (this._fCloseHandler) {
-				jQuery.sap.byId(this._sPopupId).unbind("click", this._fCloseHandler);
+				jQueryDOM(document.getElementById(this._sPopupId)).off("click", this._fCloseHandler);
 				this._fCloseHandler = null;
 			}
 			if (this._fSelectHandler) {
-				jQuery(document).unbind("mousedown", this._fSelectHandler);
+				jQuery(document).off("mousedown", this._fSelectHandler);
 				this._fSelectHandler = null;
 			}
 			Plugin.prototype.exit.apply(this, arguments);
@@ -109,14 +111,14 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Popup', 'sap/ui/core/support/Pl
 			if (sId) {
 				var oElem = sap.ui.getCore().byId(sId);
 				if (oElem) {
-					var jPopupRef = jQuery.sap.byId(oPlugin._sPopupId);
+					var jPopupRef = jQueryDOM(document.getElementById(oPlugin._sPopupId));
 					var jRef = oElem.$();
 					if (jRef.is(":visible")) {
 						jPopupRef.width(jRef.outerWidth());
 						jPopupRef.height(jRef.outerHeight());
 						oPlugin._oPopup.open(0, "BeginTop", "BeginTop", jRef[0], "0 0", "none");
 						if (bSend) {
-							sap.ui.core.support.Support.getStub().sendEvent(oPlugin.getId() + "Select", getElementDetailsForEvent(oElem, oPlugin));
+							Support.getStub().sendEvent(oPlugin.getId() + "Select", getElementDetailsForEvent(oElem, oPlugin));
 						}
 						setTimeout(function(){
 							oPlugin._oPopup.close(0);

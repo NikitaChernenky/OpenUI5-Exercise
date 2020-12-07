@@ -1,29 +1,53 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.App.
-sap.ui.define(['jquery.sap.global', './NavContainer', './library'],
-	function(jQuery, NavContainer, library) {
+sap.ui.define([
+	'./NavContainer',
+	'./library',
+	'./AppRenderer',
+	'sap/ui/base/DataType',
+	"sap/ui/util/Mobile",
+	"sap/base/Log",
+	"sap/ui/thirdparty/jquery"
+],
+	function(NavContainer, library, AppRenderer, DataType, Mobile, Log, jQuery) {
+
 	"use strict";
 
 
 
 	/**
-	 * Constructor for a new App.
+	 * Constructor for a new <code>App</code>.
 	 *
-	 * @param {string} [sId] id for the new control, generated automatically if no id is given
-	 * @param {object} [mSettings] initial settings for the new control
+	 * @param {string} [sId] ID for the new control, generated automatically if no ID is given
+	 * @param {object} [mSettings] Initial settings for the new control
 	 *
 	 * @class
-	 * App is the root element of a UI5 mobile application. It inherits from NavContainer and thus provides its navigation capabilities.
-	 * It also adds certain header tags to the HTML page which are considered useful for mobile apps.
+	 * The root element of a UI5 mobile app.
+	 *
+	 * <h3>Overview</h3>
+	 *
+	 * The <code>App</code> inherits from {@link sap.m.NavContainer} and thus provides its navigation capabilities.
+	 * It adds certain header tags to the HTML page which are considered useful for mobile apps.
+	 *
+	 * <h3>Usage</h3>
+	 *
+	 * You can configure the home icon of the <code>App</code>. For more information,
+	 * see the <code>homeIcon</code> property.
+	 *
+	 * There are options for setting the background color and a background image with the use of the
+	 * <code>backgroundColor</code> and <code>backgroundImage</code> properties.
+	 *
+	 * @see {@link topic:a4afb138acf64a61a038aa5b91a4f082 App}
+	 *
 	 * @extends sap.m.NavContainer
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
@@ -88,14 +112,31 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library'],
 			 * This can be used to make the application content better readable by making the background image partly transparent.
 			 * @since 1.11.2
 			 */
-			backgroundOpacity : {type : "float", group : "Appearance", defaultValue : 1}
+			backgroundOpacity : {type : "float", group : "Appearance", defaultValue : 1},
+
+			/**
+			 * Determines whether the <code>App</code> is displayed without address bar when
+			 * opened from an exported home screen icon on a mobile device.
+			 *
+			 * Keep in mind that if enabled, there is no back button provided by the browser and the app
+			 * must provide own navigation on all displayed pages to avoid dead ends.
+			 *
+			 * <b>Note</b>
+			 * The property can be toggled, but it doesn't take effect in real time.
+			 * It takes the set value at the moment when the home screen icon is exported by the user.
+			 * For example, if the icon is exported while the property is set to <code>true</code>,
+			 * the <code>App</code> will have no address bar when opened from that same icon regardless
+			 * of a changed property value to <code>false</code> at a later time.
+			 *
+			 * @since 1.58.0
+			 */
+			mobileWebAppCapable : {type : "boolean", group : "Appearance", defaultValue : true}
 		},
 		events : {
 
 			/**
 			 * Fired when the orientation (portrait/landscape) of the device is changed.
-			 * @deprecated Since version 1.20.0.
-			 * use sap.ui.Device.orientation.attachHandler(...)
+			 * @deprecated Since version 1.20.0, use {@link sap.ui.Device.orientation.attachHandler} instead.
 			 */
 			orientationChange : {deprecated: true,
 				parameters : {
@@ -113,14 +154,14 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library'],
 		NavContainer.prototype.init.apply(this, arguments);
 
 		this.addStyleClass("sapMApp");
-		jQuery.sap.initMobile({
+		Mobile.init({
 			viewport: !this._debugZoomAndScroll,
 			statusBar: "default",
 			hideBrowser: true,
 			preventScroll: !this._debugZoomAndScroll,
 			rootId: this.getId()
 		});
-		jQuery(window).bind("resize", jQuery.proxy(this._handleOrientationChange, this));
+		jQuery(window).on("resize", jQuery.proxy(this._handleOrientationChange, this));
 	};
 
 
@@ -128,8 +169,9 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library'],
 		if (NavContainer.prototype.onBeforeRendering) {
 			NavContainer.prototype.onBeforeRendering.apply(this, arguments);
 		}
-		jQuery.sap.initMobile({
-			homeIcon: this.getHomeIcon()
+		Mobile.init({
+			homeIcon: this.getHomeIcon(),
+			mobileWebAppCapable: this.getMobileWebAppCapable()
 		});
 	};
 
@@ -157,10 +199,10 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library'],
 	 * @private
 	 */
 	App.prototype.exit = function() {
-		jQuery(window).unbind("resize", this._handleOrientationChange);
+		jQuery(window).off("resize", this._handleOrientationChange);
 
 		if (this._sInitTimer) {
-			jQuery.sap.clearDelayedCall(this._sInitTimer);
+			clearTimeout(this._sInitTimer);
 		}
 	};
 
@@ -180,14 +222,13 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library'],
 
 	App.prototype.setBackgroundOpacity = function(fOpacity) {
 		if (fOpacity > 1 || fOpacity < 0) {
-			jQuery.sap.log.warning("Invalid value " + fOpacity + " for App.setBackgroundOpacity() ignored. Valid values are: floats between 0 and 1.");
+			Log.warning("Invalid value " + fOpacity + " for App.setBackgroundOpacity() ignored. Valid values are: floats between 0 and 1.");
 			return this;
 		}
 		this.$("BG").css("opacity", fOpacity);
 		return this.setProperty("backgroundOpacity", fOpacity, true); // no rerendering - live opacity change looks cooler
 	};
 
-
 	return App;
 
-}, /* bExport= */ true);
+});

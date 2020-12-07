@@ -1,11 +1,11 @@
 /*
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', 'sap/ui/base/EventProvider', './HTMLViewSerializer', './XMLViewSerializer'],
-	function(jQuery, EventProvider, HTMLViewSerializer, XMLViewSerializer) {
+sap.ui.define(['sap/ui/base/EventProvider', './HTMLViewSerializer', './XMLViewSerializer', "sap/base/assert"],
+	function(EventProvider, HTMLViewSerializer, XMLViewSerializer, assert) {
 	"use strict";
 
 
@@ -18,13 +18,13 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/EventProvider', './HTMLViewSeri
 	 * @param {object} [oWindow=window] the window object. Default is the window object the instance of the serializer is running in.
 	 * @param {string} [sDefaultXmlNamespace] defines the default xml namespace
 	 *
-	 * @public
 	 * @class ViewSerializer class.
 	 * @extends sap.ui.base.EventProvider
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 * @alias sap.ui.core.util.serializer.ViewSerializer
-	 * @experimental Since 1.15.1. The ViewSerializer is still under construction, so some implementation details can be changed in future.
+	 * @private
+	 * @ui5-restricted sap.watt com.sap.webide
 	 */
 	var ViewSerializer = EventProvider.extend("sap.ui.core.util.serializer.ViewSerializer", /** @lends sap.ui.core.util.serializer.ViewSerializer.prototype */
 	{
@@ -89,7 +89,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/EventProvider', './HTMLViewSeri
 	 */
 	ViewSerializer.prototype._serializeRecursive = function (oControl) {
 
-		jQuery.sap.assert(typeof oControl !== "undefined", "The control must not be undefined");
+		assert(typeof oControl !== "undefined", "The control must not be undefined");
 		// serialize view
 		if (oControl instanceof this._oWindow.sap.ui.core.mvc.View) {
 			var oViewSerializer = this._getViewSerializer(oControl, this._getViewType(oControl));
@@ -107,7 +107,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/EventProvider', './HTMLViewSeri
 				this._serializeRecursive(aContent[i]);
 			}
 		} else if (oControl.getMetadata().getClass() === this._oWindow.sap.ui.core.ComponentContainer) {
-			this._serializeRecursive(oControl.getComponentInstance().getAggregation("rootControl"));
+			this._serializeRecursive(oControl.getComponentInstance().getRootControl());
 		} else {
 			var mAggregations = oControl.getMetadata().getAllAggregations();
 			if (mAggregations) {

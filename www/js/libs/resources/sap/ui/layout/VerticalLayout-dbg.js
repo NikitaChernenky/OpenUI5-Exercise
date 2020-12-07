@@ -1,12 +1,17 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.ui.layout.VerticalLayout.
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/EnabledPropagator', './library'],
-	function(jQuery, Control, EnabledPropagator, library) {
+sap.ui.define([
+ 'sap/ui/core/Control',
+ 'sap/ui/core/EnabledPropagator',
+ './library',
+ "./VerticalLayoutRenderer"
+],
+	function(Control, EnabledPropagator, library, VerticalLayoutRenderer) {
 	"use strict";
 
 	/**
@@ -20,7 +25,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/EnabledP
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
@@ -54,24 +59,21 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/EnabledP
 			 */
 			content : {type : "sap.ui.core.Control", multiple : true, singularName : "content"}
 		},
-		designTime : true
+		dnd: { draggable: false, droppable: true },
+		designtime: "sap/ui/layout/designtime/VerticalLayout.designtime"
 	}});
 
 	/**
-	 * Sets the width of the Vertical Layout without rerendering of the whole control, and everything inside it.
-	 * @param {sap.ui.core.CSSSize} width
-	 * @returns {VerticalLayout}
+	 * @see sap.ui.core.Control#getAccessibilityInfo
+	 * @protected
+	 * @returns {object} An object with the accessibilty infos for this control
 	 */
-	VerticalLayout.prototype.setWidth = function (width) {
-		this.setProperty("width", width, true);
-		if (this.getDomRef()) {
-			this.getDomRef().style.width = this.getWidth();
-		}
-		return this;
+	VerticalLayout.prototype.getAccessibilityInfo = function() {
+		return {children: this.getContent()};
 	};
 
 	EnabledPropagator.call(VerticalLayout.prototype);
 
 	return VerticalLayout;
 
-}, /* bExport= */ true);
+});

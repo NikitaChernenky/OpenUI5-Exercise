@@ -1,11 +1,11 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', './ListRenderer', 'sap/ui/core/Renderer'],
-	function(jQuery, ListRenderer, Renderer) {
+sap.ui.define(['./ListRenderer', 'sap/ui/core/Renderer'],
+	function(ListRenderer, Renderer) {
 	"use strict";
 
 	/**
@@ -16,6 +16,7 @@ sap.ui.define(['jquery.sap.global', './ListRenderer', 'sap/ui/core/Renderer'],
 	 * @alias sap.m.FacetFilterListRenderer
 	 */
 	var FacetFilterListRenderer = Renderer.extend(ListRenderer);
+	FacetFilterListRenderer.apiVersion = 2;
 
 	return FacetFilterListRenderer;
 

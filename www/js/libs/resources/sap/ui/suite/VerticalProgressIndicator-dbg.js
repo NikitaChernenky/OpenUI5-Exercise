@@ -1,12 +1,24 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.ui.suite.VerticalProgressIndicator.
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/EnabledPropagator', './library'],
-	function(jQuery, Control, EnabledPropagator, library) {
+sap.ui.define([
+	"sap/ui/thirdparty/jquery",
+	'sap/ui/core/Control',
+	'sap/ui/core/EnabledPropagator',
+	'./library',
+	"./VerticalProgressIndicatorRenderer"
+],
+	function(
+	 jQuery,
+	 Control,
+	 EnabledPropagator,
+	 library,
+	 VerticalProgressIndicatorRenderer
+	) {
 	"use strict";
 
 
@@ -22,7 +34,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/EnabledP
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author Svetozar Buzdumovic
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
@@ -85,7 +97,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/EnabledP
 	  }
 
 	  // get the ProgressBar
-	  this.oBar  = jQuery.sap.domById(this.getId() + '-bar');
+	  this.oBar = window.document.getElementById(this.getId() + '-bar');
 
 	  // get the new Value and calculate Pixels
 	  VerticalPercent = iPercentage;
@@ -105,7 +117,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/EnabledP
 
 	  //set the ARIA property
 	  if (!this.oThis) {
-		this.oThis = jQuery.sap.byId(this.getId());
+		this.oThis = jQuery(document.getElementById(this.getId()));
 		}
 	  this.oThis.attr('aria-valuenow', iPercentage + '%');
 	  return this;

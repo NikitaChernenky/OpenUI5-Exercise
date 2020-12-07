@@ -1,10 +1,10 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-sap.ui.define(['jquery.sap.global'],
-	function(jQuery) {
+sap.ui.define(["sap/ui/core/Element", "sap/ui/core/Icon", "sap/ui/core/IconPool", "sap/ui/Device"],
+	function(Element, Icon, IconPool, Device) {
 		"use strict";
 
 		/**
@@ -12,7 +12,9 @@ sap.ui.define(['jquery.sap.global'],
 		 *
 		 * @namespace
 		 */
-		var SelectListRenderer = {};
+		var SelectListRenderer = {
+			apiVersion: 2
+		};
 
 		/**
 		 * CSS class to be applied to the  root element of the SelectList.
@@ -26,31 +28,40 @@ sap.ui.define(['jquery.sap.global'],
 		 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
 		 *
 		 * @param {sap.ui.core.RenderManager} oRm The RenderManager that can be used for writing to the render output buffer.
-		 * @param {sap.ui.core.Control} oSelectList An object representation of the control that should be rendered.
+		 * @param {sap.ui.core.Control} oList An object representation of the control that should be rendered.
 		 */
 		SelectListRenderer.render = function(oRm, oList) {
+			this.writeOpenListTag(oRm, oList, { elementData: true });
+			this.renderItems(oRm, oList);
+			this.writeCloseListTag(oRm, oList);
+		};
+
+		SelectListRenderer.writeOpenListTag = function(oRm, oList, mStates) {
 			var CSS_CLASS = SelectListRenderer.CSS_CLASS;
 
-			oRm.write("<ul");
-			oRm.writeControlData(oList);
-			oRm.addClass(CSS_CLASS);
+			if (mStates.elementData) {
+				oRm.openStart("ul", oList);
+			} else {
+				oRm.openStart("ul");
+			}
+
+			oRm.class(CSS_CLASS);
 
 			if (oList.getShowSecondaryValues()) {
-				oRm.addClass(CSS_CLASS + "TableLayout");
+				oRm.class(CSS_CLASS + "TableLayout");
 			}
 
 			if (!oList.getEnabled()) {
-				oRm.addClass(CSS_CLASS + "Disabled");
+				oRm.class(CSS_CLASS + "Disabled");
 			}
 
-			oRm.addStyle("width", oList.getWidth());
-			oRm.addStyle("max-width", oList.getMaxWidth());
-			oRm.writeStyles();
-			oRm.writeClasses();
+			oRm.style("width", oList.getWidth());
 			this.writeAccessibilityState(oRm, oList);
-			oRm.write(">");
-			this.renderItems(oRm, oList);
-			oRm.write("</ul>");
+			oRm.openEnd();
+		};
+
+		SelectListRenderer.writeCloseListTag = function(oRm, oList) {
+			oRm.close("ul");
 		};
 
 		/**
@@ -60,15 +71,29 @@ sap.ui.define(['jquery.sap.global'],
 		 * @param {sap.ui.core.Control} oList An object representation of the control that should be rendered.
 		 */
 		SelectListRenderer.renderItems = function(oRm, oList) {
-			var iSize = oList.getItems().length,
-				oSelectedItem = oList.getSelectedItem();
+			var iSize = oList._getNonSeparatorItemsCount(),
+				aItems = oList.getItems(),
+				oSelectedItem = oList.getSelectedItem(),
+				iCurrentPosInSet = 1,
+				oItemStates,
+				bForceSelectedVisualState;
 
-			for (var i = 0, aItems = oList.getItems(); i < aItems.length; i++) {
-				this.renderItem(oRm, oList, aItems[i], {
+			for (var i = 0; i < aItems.length; i++) {
+				// should force selected state when there is no selected item for the
+				// visual focus to be set on the first item when popover is opened
+				bForceSelectedVisualState = i === 0 && !oSelectedItem;
+
+				oItemStates = {
 					selected: oSelectedItem === aItems[i],
 					setsize: iSize,
-					posinset: i + 1
-				});
+					elementData: true
+				};
+
+				if (!(aItems[i] instanceof sap.ui.core.SeparatorItem)) {
+					oItemStates.posinset = iCurrentPosInSet++;
+				}
+
+				this.renderItem(oRm, oList, aItems[i], oItemStates, bForceSelectedVisualState);
 			}
 		};
 
@@ -79,10 +104,11 @@ sap.ui.define(['jquery.sap.global'],
 		 * @param {sap.ui.core.Control} oList An object representation of the control that should be rendered.
 		 * @param {sap.ui.core.Element} oItem An object representation of the element that should be rendered.
 		 * @param {object} mStates
+		 * @param {boolean} bForceSelectedVisualState Forces the visual focus (selected state) to be se on the item.
 		 */
-		SelectListRenderer.renderItem = function(oRm, oList, oItem, mStates) {
+		SelectListRenderer.renderItem = function(oRm, oList, oItem, mStates, bForceSelectedVisualState) {
 
-			if (!(oItem instanceof sap.ui.core.Element)) {
+			if (!(oItem instanceof Element)) {
 				return;
 			}
 
@@ -92,82 +118,89 @@ sap.ui.define(['jquery.sap.global'],
 				sTooltip = oItem.getTooltip_AsString(),
 				bShowSecondaryValues = oList.getShowSecondaryValues();
 
-			oRm.write("<li");
-			oRm.writeElementData(oItem);
+			oRm.openStart("li", mStates.elementData ? oItem : null);
+
+			if (oItem.getIcon && oItem.getIcon()) {
+				oRm.class("sapMSelectListItemWithIcon");
+			}
 
 			if (oItem instanceof sap.ui.core.SeparatorItem) {
-				oRm.addClass(CSS_CLASS + "SeparatorItem");
+				oRm.class(CSS_CLASS + "SeparatorItem");
 
 				if (bShowSecondaryValues) {
-					oRm.addClass(CSS_CLASS + "Row");
+					oRm.class(CSS_CLASS + "Row");
 				}
 			} else {
 
-				oRm.addClass(CSS_CLASS + "ItemBase");
+				oRm.class(CSS_CLASS + "ItemBase");
 
 				if (bShowSecondaryValues) {
-					oRm.addClass(CSS_CLASS + "Row");
+					oRm.class(CSS_CLASS + "Row");
 				} else {
-					oRm.addClass(CSS_CLASS + "Item");
+					oRm.class(CSS_CLASS + "Item");
 				}
 
 				if (oItem.bVisible === false) {
-					oRm.addClass(CSS_CLASS + "ItemBaseInvisible");
+					oRm.class(CSS_CLASS + "ItemBaseInvisible");
 				}
 
 				if (!bEnabled) {
-					oRm.addClass(CSS_CLASS + "ItemBaseDisabled");
+					oRm.class(CSS_CLASS + "ItemBaseDisabled");
 				}
 
-				if (bEnabled && sap.ui.Device.system.desktop) {
-					oRm.addClass(CSS_CLASS + "ItemBaseHoverable");
+				if (bEnabled && Device.system.desktop) {
+					oRm.class(CSS_CLASS + "ItemBaseHoverable");
 				}
 
-				if (oItem === oSelectedItem) {
-					oRm.addClass(CSS_CLASS + "ItemBaseSelected");
+				if (oItem === oSelectedItem || bForceSelectedVisualState) {
+					oRm.class(CSS_CLASS + "ItemBaseSelected");
 				}
 
 				if (bEnabled) {
-					oRm.writeAttribute("tabindex", "0");
+					oRm.attr("tabindex", "0");
 				}
 			}
 
-			oRm.writeClasses();
 
 			if (sTooltip) {
-				oRm.writeAttributeEscaped("title", sTooltip);
+				oRm.attr("title", sTooltip);
 			}
 
 			this.writeItemAccessibilityState.apply(this, arguments);
 
-			oRm.write(">");
+			oRm.openEnd();
 
 			if (bShowSecondaryValues) {
 
-				oRm.write("<span");
-				oRm.addClass(CSS_CLASS + "Cell");
-				oRm.addClass(CSS_CLASS + "FirstCell");
-				oRm.writeClasses();
-				oRm.write(">");
-				oRm.writeEscaped(oItem.getText());
-				oRm.write("</span>");
+				oRm.openStart("span");
+				oRm.class(CSS_CLASS + "Cell");
+				oRm.class(CSS_CLASS + "FirstCell");
+				oRm.attr("disabled", "disabled"); // fixes span obtaining focus in IE
+				oRm.openEnd();
 
-				oRm.write("<span");
-				oRm.addClass(CSS_CLASS + "Cell");
-				oRm.addClass(CSS_CLASS + "LastCell");
-				oRm.writeClasses();
-				oRm.write(">");
+				this._renderIcon(oRm, oItem);
+
+				oRm.text(oItem.getText());
+				oRm.close("span");
+
+				oRm.openStart("span");
+				oRm.class(CSS_CLASS + "Cell");
+				oRm.class(CSS_CLASS + "LastCell");
+				oRm.attr("disabled", "disabled"); // fixes span obtaining focus in IE
+				oRm.openEnd();
 
 				if (typeof oItem.getAdditionalText === "function") {
-					oRm.writeEscaped(oItem.getAdditionalText());
+					oRm.text(oItem.getAdditionalText());
 				}
 
-				oRm.write("</span>");
+				oRm.close("span");
 			} else {
-				oRm.writeEscaped(oItem.getText());
+				this._renderIcon(oRm, oItem);
+
+				oRm.text(oItem.getText());
 			}
 
-			oRm.write("</li>");
+			oRm.close("li");
 		};
 
 		/**
@@ -178,7 +211,7 @@ sap.ui.define(['jquery.sap.global'],
 		 * @param {sap.ui.core.Control} oList An object representation of the control that should be rendered.
 		 */
 		SelectListRenderer.writeAccessibilityState = function(oRm, oList) {
-			oRm.writeAccessibilityState({
+			oRm.accessibilityState(oList, {
 				role: "listbox"
 			});
 		};
@@ -193,14 +226,32 @@ sap.ui.define(['jquery.sap.global'],
 		 * @param {object} mStates
 		 */
 		SelectListRenderer.writeItemAccessibilityState = function(oRm, oList, oItem, mStates) {
-			var sRole = (oItem instanceof sap.ui.core.SeparatorItem) ? "separator" : "option";
+			var sRole = (oItem.isA("sap.ui.core.SeparatorItem")) ? "separator" : "option";
 
-			oRm.writeAccessibilityState(oItem, {
+			var sDesc;
+
+			if (!oItem.getText() && oItem.getIcon && oItem.getIcon()) {
+				var oIconInfo = IconPool.getIconInfo(oItem.getIcon());
+				if (oIconInfo) {
+					sDesc = oIconInfo.text || oIconInfo.name;
+				}
+			}
+
+			oRm.accessibilityState(oItem, {
 				role: sRole,
 				selected: mStates.selected,
 				setsize: mStates.setsize,
-				posinset: mStates.posinset
+				posinset: mStates.posinset,
+				label: sDesc
 			});
+		};
+
+		SelectListRenderer._renderIcon = function(oRm, oItem) {
+			if (oItem.getIcon && oItem.getIcon()) {
+				oRm.icon(oItem.getIcon(), SelectListRenderer.CSS_CLASS + "ItemIcon", {
+					id: oItem.getId() + "-icon"
+				});
+			}
 		};
 
 		return SelectListRenderer;

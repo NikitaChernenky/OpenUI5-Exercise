@@ -1,64 +1,67 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides default renderer for control sap.m.Breadcrumbs
-sap.ui.define(["sap/m/Breadcrumbs", "sap/m/Text"], function (Class, Text) {
+sap.ui.define(["sap/m/Text"], function (Text) {
 	"use strict";
 
 	/**
 	 * Breadcrumbs renderer.
 	 * @namespace
 	 */
-	var BreadcrumbsRenderer = {};
+	var BreadcrumbsRenderer = {
+		apiVersion: 2
+	};
+
+	var oResource = sap.ui.getCore().getLibraryResourceBundle("sap.m");
 
 	/**
 	 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
 	 *
 	 * @param {sap.ui.core.RenderManager} oRm The RenderManager that can be used for writing to the Render-Output-Buffer
-	 * @param {sap.ui.core.Control} oControl An object representation of the control that should be rendered
+	 * @param {sap.m.Breadcrumbs} oControl An object representation of the control that should be rendered
 	 */
 	BreadcrumbsRenderer.render = function (oRm, oControl) {
 		var aControls = oControl._getControlsForBreadcrumbTrail(),
-			oSelect = oControl._getSelect();
+			oSelect = oControl._getSelect(),
+			sSeparator = oControl._sSeparatorSymbol;
 
-		oRm.write("<ul");
-		oRm.writeControlData(oControl);
-		oRm.addClass("sapMBreadcrumbs");
-		oRm.writeClasses();
-		oRm.writeAttribute("role", "navigation");
-		oRm.writeAttributeEscaped("aria-labelledby", Class._getResourceBundle().getText("BREADCRUMB_LABEL"));
-		oRm.write(">");
+		oRm.openStart("nav", oControl);
+		oRm.class("sapMBreadcrumbs");
+		oRm.attr("aria-label", BreadcrumbsRenderer._getResourceBundleText("BREADCRUMB_LABEL"));
+		oRm.openEnd();
+		oRm.openStart("ol");
+		oRm.openEnd();
 
 		if (oSelect.getVisible()) {
-			this._renderControlInListItem(oRm, oSelect, false, "sapMBreadcrumbsSelectItem");
+			this._renderControlInListItem(oRm, oSelect, sSeparator, false, "sapMBreadcrumbsSelectItem");
 		}
 
 		aControls.forEach(function (oChildControl) {
-			this._renderControlInListItem(oRm, oChildControl, oChildControl instanceof Text);
+			this._renderControlInListItem(oRm, oChildControl, sSeparator, oChildControl instanceof Text);
 		}, this);
 
-		oRm.write("</ul>");
+		oRm.close("ol");
+		oRm.close("nav");
 	};
 
-	BreadcrumbsRenderer._renderControlInListItem = function (oRm, oControl, bSkipSeparator, sAdditionalItemClass) {
-		oRm.write("<li");
-		oRm.writeAttribute("role", "presentation");
-		oRm.writeAttribute("aria-hidden", "true");
-		oRm.addClass("sapMBreadcrumbsItem");
-		oRm.addClass(sAdditionalItemClass);
-		oRm.writeClasses();
-		oRm.write(">");
+	BreadcrumbsRenderer._renderControlInListItem = function (oRm, oControl, sSeparator, bSkipSeparator, sAdditionalItemClass) {
+		oRm.openStart("li");
+		oRm.class("sapMBreadcrumbsItem");
+		oRm.class(sAdditionalItemClass);
+		oRm.openEnd();
 		oRm.renderControl(oControl);
 		if (!bSkipSeparator) {
-			oRm.write("<span");
-			oRm.addClass("sapMBreadcrumbsSeparator");
-			oRm.writeClasses();
-			oRm.write(">/</span>");
+			oRm.openStart("span").class("sapMBreadcrumbsSeparator").openEnd().text(sSeparator).close("span");
 		}
-		oRm.write("</li>");
+		oRm.close("li");
+	};
+
+	BreadcrumbsRenderer._getResourceBundleText = function (sText) {
+		return oResource.getText(sText);
 	};
 
 	return BreadcrumbsRenderer;

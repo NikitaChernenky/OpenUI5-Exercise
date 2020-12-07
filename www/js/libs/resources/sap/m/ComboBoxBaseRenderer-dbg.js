@@ -1,10 +1,10 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-sap.ui.define(['jquery.sap.global', './ComboBoxTextFieldRenderer', 'sap/ui/core/Renderer'],
-	function(jQuery, ComboBoxTextFieldRenderer, Renderer) {
+sap.ui.define(['./ComboBoxTextFieldRenderer', 'sap/ui/core/Renderer', 'sap/ui/core/Core'],
+	function (ComboBoxTextFieldRenderer, Renderer, Core) {
 		"use strict";
 
 		/**
@@ -13,7 +13,7 @@ sap.ui.define(['jquery.sap.global', './ComboBoxTextFieldRenderer', 'sap/ui/core/
 		 * @namespace
 		 */
 		var ComboBoxBaseRenderer = Renderer.extend(ComboBoxTextFieldRenderer);
-
+		ComboBoxBaseRenderer.apiVersion = 2;
 		/**
 		 * CSS class to be applied to the root element of the control.
 		 *
@@ -27,10 +27,15 @@ sap.ui.define(['jquery.sap.global', './ComboBoxTextFieldRenderer', 'sap/ui/core/
 		 * To be overwritten by subclasses.
 		 *
 		 * @param {sap.ui.core.Control} oControl An object representation of the control that should be rendered.
+		 * @returns {object} The accessibility state of the control
 		 */
-		ComboBoxBaseRenderer.getAccessibilityState = function(oControl) {
-			var mAccessibilityState = ComboBoxTextFieldRenderer.getAccessibilityState.call(this, oControl);
-			mAccessibilityState.expanded = oControl.isOpen();
+		ComboBoxBaseRenderer.getAccessibilityState = function (oControl) {
+			var mAccessibilityState = ComboBoxTextFieldRenderer.getAccessibilityState.call(this, oControl),
+				oList = oControl._getList();
+
+			if (oList) {
+				mAccessibilityState.controls = oList.getId();
+			}
 			return mAccessibilityState;
 		};
 
@@ -40,18 +45,18 @@ sap.ui.define(['jquery.sap.global', './ComboBoxTextFieldRenderer', 'sap/ui/core/
 		 * @param {sap.ui.core.RenderManager} oRm The RenderManager that can be used for writing to the render output buffer.
 		 * @param {sap.ui.core.Control} oControl An object representation of the control that should be rendered.
 		 */
-		ComboBoxBaseRenderer.addOuterClasses = function(oRm, oControl) {
+		ComboBoxBaseRenderer.addOuterClasses = function (oRm, oControl) {
 			ComboBoxTextFieldRenderer.addOuterClasses.apply(this, arguments);
 
 			var CSS_CLASS = ComboBoxBaseRenderer.CSS_CLASS_COMBOBOXBASE;
-			oRm.addClass(CSS_CLASS);
+			oRm.class(CSS_CLASS);
 
 			if (!oControl.getEnabled()) {
-				oRm.addClass(CSS_CLASS + "Disabled");
+				oRm.class(CSS_CLASS + "Disabled");
 			}
 
 			if (!oControl.getEditable()) {
-				oRm.addClass(CSS_CLASS + "Readonly");
+				oRm.class(CSS_CLASS + "Readonly");
 			}
 		};
 
@@ -62,9 +67,9 @@ sap.ui.define(['jquery.sap.global', './ComboBoxTextFieldRenderer', 'sap/ui/core/
 		 * @param {sap.ui.core.RenderManager} oRm The RenderManager that can be used for writing to the render output buffer.
 		 * @param {sap.ui.core.Control} oControl An object representation of the control that should be rendered.
 		 */
-		ComboBoxBaseRenderer.addButtonClasses = function(oRm, oControl) {
+		ComboBoxBaseRenderer.addButtonClasses = function (oRm, oControl) {
 			ComboBoxTextFieldRenderer.addButtonClasses.apply(this, arguments);
-			oRm.addClass(ComboBoxBaseRenderer.CSS_CLASS_COMBOBOXBASE + "Arrow");
+			oRm.class(ComboBoxBaseRenderer.CSS_CLASS_COMBOBOXBASE + "Arrow");
 		};
 
 		return ComboBoxBaseRenderer;

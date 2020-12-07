@@ -1,19 +1,17 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides object sap.ui.model.odata.AnnotationHelper
 sap.ui.define([
-	"jquery.sap.global",
-	"sap/ui/base/BindingParser",
 	"./_AnnotationHelperBasics",
-	"./_AnnotationHelperExpression"
-], function(jQuery, BindingParser, Basics, Expression) {
+	"./_AnnotationHelperExpression",
+	"sap/base/Log",
+	"sap/ui/base/BindingParser"
+], function (Basics, Expression, Log, BindingParser) {
 		'use strict';
-
-		var AnnotationHelper;
 
 		/**
 		 * Returns a function representing the composition <code>fnAfter</code> after
@@ -41,11 +39,12 @@ sap.ui.define([
 		 * @classdesc
 		 * A collection of methods which help to consume
 		 * <a href="http://docs.oasis-open.org/odata/odata/v4.0/odata-v4.0-part3-csdl.html">
-		 * OData v4 annotations</a> in XML template views.
+		 * OData V4 annotations</a> in XML template views. Every context argument must belong to a
+		 * <code>sap.ui.model.odata.ODataMetaModel</code> instance.
 		 *
 		 * Formatter functions like {@link #.format format} and {@link #.simplePath simplePath} can
-		 * be used in complex bindings to turn OData v4 annotations into texts or data bindings,
-		 * e.g. <code>&lt;sfi:SmartField value="{path: 'meta>Value', formatter:
+		 * be used in complex bindings to turn OData V4 annotations into texts or data bindings,
+		 * e.g. <code>&lt;sfi:SmartField value="{path : 'meta>Value', formatter :
 		 * 'sap.ui.model.odata.AnnotationHelper.simplePath'}"/></code>.
 		 *
 		 * Helper functions like {@link #.resolvePath resolvePath} can be used by template
@@ -56,9 +55,10 @@ sap.ui.define([
 		 *
 		 * @public
 		 * @since 1.27.0
-		 * @namespace sap.ui.model.odata.AnnotationHelper
+		 * @namespace
+		 * @alias sap.ui.model.odata.AnnotationHelper
 		 */
-		AnnotationHelper = /** @lends sap.ui.model.odata.AnnotationHelper */ {
+		var AnnotationHelper = {
 			/**
 			 * Creates a property setting (which is either a constant value or a binding info
 			 * object) from the given parts and from the optional root formatter function.
@@ -103,7 +103,7 @@ sap.ui.define([
 			 *
 			 * vPropertySetting =  sap.ui.model.odata.AnnotationHelper.createPropertySetting([
 			 *     sap.ui.model.odata.AnnotationHelper.format(oValueContext),
-			 *     "{path: 'meta>Value', formatter: 'sap.ui.model.odata.AnnotationHelper.simplePath'}",
+			 *     "{path : 'meta>Value', formatter : 'sap.ui.model.odata.AnnotationHelper.simplePath'}",
 			 *     "{:= 'Mr. ' + ${/FirstName} + ' ' + ${/LastName}}",
 			 *     "hello, world!",
 			 *     42
@@ -112,7 +112,7 @@ sap.ui.define([
 			 * oControl.applySettings({"someProperty" : vPropertySetting});
 			 * </pre>
 			 *
-			 * @param {any[]} vParts
+			 * @param {any[]} aParts
 			 *   array of parts
 			 * @param {function} [fnRootFormatter]
 			 *   root formatter function; default: <code>Array.prototype.join(., " ")</code>
@@ -127,12 +127,12 @@ sap.ui.define([
 			 * @public
 			 * @since 1.31.0
 			 */
-			createPropertySetting : function (vParts, fnRootFormatter) {
+			createPropertySetting : function (aParts, fnRootFormatter) {
 				var bMergeNeeded = false,
 					vPropertySetting;
 
-				vParts = vParts.slice(); // shallow copy to avoid changes visible to caller
-				vParts.forEach(function (vPart, i) {
+				aParts = aParts.slice(); // shallow copy to avoid changes visible to caller
+				aParts.forEach(function (vPart, i) {
 					switch (typeof vPart) {
 					case "boolean":
 					case "number":
@@ -148,7 +148,7 @@ sap.ui.define([
 									+ vPropertySetting.functionsNotFound.join(", ")
 									+  " not found");
 							}
-							vParts[i] = vPart = vPropertySetting;
+							aParts[i] = vPart = vPropertySetting;
 						}
 						// falls through
 					case "object":
@@ -166,7 +166,7 @@ sap.ui.define([
 
 				vPropertySetting = {
 					formatter : fnRootFormatter,
-					parts : vParts
+					parts : aParts
 				};
 				if (bMergeNeeded) {
 					BindingParser.mergeParts(vPropertySetting);
@@ -196,7 +196,7 @@ sap.ui.define([
 
 			/**
 			 * A formatter function to be used in a complex binding inside an XML template view
-			 * in order to interpret OData v4 annotations. It knows about
+			 * in order to interpret OData V4 annotations. It knows about
 			 * <ul>
 			 *   <li> the "14.4 Constant Expressions" for "edm:Bool", "edm:Date",
 			 *   "edm:DateTimeOffset", "edm:Decimal", "edm:Float", "edm:Guid", "edm:Int",
@@ -206,7 +206,7 @@ sap.ui.define([
 			 *   "{/##/dataServices/schema/0/entityType/1/com.sap.vocabularies.UI.v1.FieldGroup#Dimensions/Data/0/Label/String}"
 			 *   </code>). Data binding expressions are used in case XML template processing has
 			 *   been started with the setting <code>bindTexts : true</code>. The purpose is to
-			 *   reference translatable texts from OData v4 annotations, especially for XML
+			 *   reference translatable texts from OData V4 annotations, especially for XML
 			 *   template processing at design time. Since 1.31.0, string constants that contain a
 			 *   simple binding <code>"{@i18n>...}"</code> to the hard-coded model name "@i18n"
 			 *   with arbitrary path are not turned into a fixed text, but kept as a data binding
@@ -231,7 +231,7 @@ sap.ui.define([
 			 *   <code>null</code> value. In <code>odata.concat</code> it is ignored.
 			 *   <li> the dynamic "14.5.12 Expression edm:Path" and "14.5.13 Expression
 			 *   edm:PropertyPath": This is turned into a data binding relative to an entity,
-			 *   including type information and constraints as available from meta data,
+			 *   including type information and constraints as available from metadata,
 			 *   e.g. <code>"{path : 'Name', type : 'sap.ui.model.odata.type.String',
 			 *   constraints : {'maxLength':'255'}}"</code>.
 			 *   Depending on the used type, some additional constraints of this type are set:
@@ -239,12 +239,17 @@ sap.ui.define([
 			 *     <li>Edm.DateTime: The "displayFormat" constraint is set to the value of the
 			 *     "sap:display-format" annotation of the referenced property.
 			 *     <li>Edm.Decimal: The "precision" and "scale" constraints are set to the values
-			 *     of the corresponding attributes of the referenced property.
+			 *     of the corresponding attributes of the referenced property. The "minimum",
+			 *     "maximum", "minimumExclusive" and "maximumExlusive" constraints are set to the
+			 *     values of the corresponding "Org.OData.Validation.V1" annotation of the
+			 *     referenced property; note that in this case only constant expressions are
+			 *     supported to determine the annotation value.
 			 *     <li>Edm.String: The "maxLength" constraint is set to the value of the
 			 *     corresponding attribute of the referenced property and the "isDigitSequence"
 			 *     constraint is set to the value of the
 			 *     "com.sap.vocabularies.Common.v1.IsDigitSequence" annotation of the referenced
-			 *     property.
+			 *     property; note that in this case only constant expressions are supported to
+			 *     determine the annotation value.
 			 *   </ul>
 			 * </ul>
 			 * Unsupported or incorrect values are turned into a string nevertheless, but indicated
@@ -282,7 +287,7 @@ sap.ui.define([
 
 			/**
 			 * A formatter function to be used in a complex binding inside an XML template view
-			 * in order to interpret OData v4 annotations. It knows about the following dynamic
+			 * in order to interpret OData V4 annotations. It knows about the following dynamic
 			 * expressions:
 			 * <ul>
 			 * <li>"14.5.2 Expression edm:AnnotationPath"</li>
@@ -355,15 +360,17 @@ sap.ui.define([
 			 * @param {sap.ui.model.Context} oContext
 			 *   a context which must point to a simple string or to an annotation (or annotation
 			 *   property) of type <code>Edm.AnnotationPath</code>,
-			 *   <code>Edm.NaviagtionPropertyPath</code>, <code>Edm.Path</code>, or
+			 *   <code>Edm.NavigationPropertyPath</code>, <code>Edm.Path</code>, or
 			 *   <code>Edm.PropertyPath</code> embedded within an entity set or entity type;
 			 *   the context's model must be an {@link sap.ui.model.odata.ODataMetaModel}
 			 * @returns {string}
-			 *   the path to the entity set, or <code>undefined</code> if no such set is found
+			 *   the path to the entity set, or <code>undefined</code> if no such set is found. In
+			 *   this case, a warning is logged to the console.
 			 * @public
 			 */
 			gotoEntitySet : function (oContext) {
 				var sEntitySet,
+					sEntitySetPath,
 					vRawValue = oContext.getObject(),
 					oResult;
 
@@ -376,9 +383,17 @@ sap.ui.define([
 						&& oResult.associationSetEnd.entitySet;
 				}
 
-				return sEntitySet
-					? oContext.getModel().getODataEntitySet(sEntitySet, true)
-					: undefined;
+				if (sEntitySet) {
+					sEntitySetPath = oContext.getModel().getODataEntitySet(sEntitySet, true);
+				}
+
+				if (!sEntitySetPath) {
+					Log.warning(oContext.getPath() + ": found '" + sEntitySet
+						+ "' which is not a name of an entity set", undefined,
+						"sap.ui.model.odata.AnnotationHelper");
+				}
+
+				return sEntitySetPath;
 			},
 
 			/**
@@ -398,11 +413,21 @@ sap.ui.define([
 			 *   the context's model must be an {@link sap.ui.model.odata.ODataMetaModel}
 			 * @returns {string}
 			 *   the path to the entity type with the given qualified name,
-			 *   or <code>undefined</code> if no such type is found
+			 *   or <code>undefined</code> if no such type is found. In this case, a warning is
+			 *   logged to the console.
 			 * @public
 			 */
 			gotoEntityType : function (oContext) {
-				return oContext.getModel().getODataEntityType(oContext.getProperty(""), true);
+				var sEntityType = oContext.getProperty(""),
+					oResult = oContext.getModel().getODataEntityType(sEntityType, true);
+
+				if (!oResult) {
+					Log.warning(oContext.getPath() + ": found '" + sEntityType
+						+ "' which is not a name of an entity type", undefined,
+						"sap.ui.model.odata.AnnotationHelper");
+				}
+
+				return oResult;
 			},
 
 			/**
@@ -425,18 +450,27 @@ sap.ui.define([
 			 *   the context's model must be an {@link sap.ui.model.odata.ODataMetaModel}
 			 * @returns {string}
 			 *   the path to the function import with the given qualified name,
-			 *   or <code>undefined</code> if no function import is found
+			 *   or <code>undefined</code> if no function import is found. In this case, a warning
+			 *   is logged to the console.
 			 * @since 1.29.1
 			 * @public
 			 */
 			gotoFunctionImport : function (oContext) {
-				return oContext.getModel().getODataFunctionImport(oContext.getProperty("String"),
-					true);
+				var sFunctionImport = oContext.getProperty("String"),
+					oResult = oContext.getModel().getODataFunctionImport(sFunctionImport, true);
+
+				if (!oResult) {
+					Log.warning(oContext.getPath() + ": found '" + sFunctionImport
+						+ "' which is not a name of a function import", undefined,
+						"sap.ui.model.odata.AnnotationHelper");
+				}
+
+				return oResult;
 			},
 
 			/**
 			 * A formatter function to be used in a complex binding inside an XML template view
-			 * in order to interpret OData v4 annotations. It knows about the following dynamic
+			 * in order to interpret OData V4 annotations. It knows about the following dynamic
 			 * expressions:
 			 * <ul>
 			 * <li>"14.5.2 Expression edm:AnnotationPath"</li>
@@ -517,11 +551,16 @@ sap.ui.define([
 			 *   the context's model must be an {@link sap.ui.model.odata.ODataMetaModel}
 			 * @returns {string}
 			 *   the path to the target, or <code>undefined</code> in case the path cannot be
-			 *   resolved
+			 *   resolved. In this case, a warning is logged to the console.
 			 * @public
 			 */
 			resolvePath : function (oContext) {
 				var oResult = Basics.followPath(oContext, oContext.getObject());
+
+				if (!oResult) {
+					Log.warning(oContext.getPath() + ": Path could not be resolved ",
+						undefined, "sap.ui.model.odata.AnnotationHelper");
+				}
 
 				return oResult
 					? oResult.resolvedPath
@@ -530,7 +569,7 @@ sap.ui.define([
 
 			/**
 			 * Formatter function that is used in a complex binding inside an XML template view.
-			 * The function is used to interpret OData v4 annotations, supporting the same
+			 * The function is used to interpret OData V4 annotations, supporting the same
 			 * annotations as {@link #.format format} but with a simplified output aimed at
 			 * design-time templating with smart controls.
 			 *

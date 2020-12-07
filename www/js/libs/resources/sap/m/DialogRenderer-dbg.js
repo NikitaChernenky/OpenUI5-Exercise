@@ -1,201 +1,240 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-sap.ui.define(['jquery.sap.global', './BarRenderer'],
-	function (jQuery, BarRenderer) {
-		"use strict";
+sap.ui.define([
+	"sap/m/library",
+	"sap/ui/Device",
+	"sap/ui/core/library"
+], function (library, Device, coreLibrary) {
+	"use strict";
 
-		/**
-		 * Dialog renderer.
-		 *
-		 * @namespace
-		 */
-		var DialogRenderer = {};
+	// shortcut for sap.m.DialogType
+	var DialogType = library.DialogType;
 
-		/**
-		 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
-		 *
-		 * @param {sap.ui.core.RenderManager} oRm The RenderManager that can be used for writing to the render output buffer.
-		 * @param {sap.ui.core.Control} oControl An object representation of the control that should be rendered.
-		 */
-		DialogRenderer.render = function (oRm, oControl) {
-			var id = oControl.getId(),
-				sType = oControl.getType(),
-				oHeader = oControl._getAnyHeader(),
-				oSubHeader = oControl.getSubHeader(),
-				bMessage = (sType === sap.m.DialogType.Message),
-				oLeftButton = oControl.getBeginButton(),
-				oRightButton = oControl.getEndButton(),
-				bHorizontalScrolling = oControl.getHorizontalScrolling(),
-				bVerticalScrolling = oControl.getVerticalScrolling(),
-				sState = oControl.getState(),
-				bStretch = oControl.getStretch(),
-				bStretchOnPhone = oControl.getStretchOnPhone() && sap.ui.Device.system.phone,
-				bResizable = oControl.getResizable(),
-				bDraggable = oControl.getDraggable();
+	// shortcut for sap.m.DialogRoleType
+	var DialogRoleType = library.DialogRoleType;
 
-			if (oHeader) {
-				oHeader.applyTagAndContextClassFor("header");
+	// shortcut for sap.ui.core.ValueState
+	var ValueState = coreLibrary.ValueState;
+
+	/**
+	 * Dialog renderer.
+	 *
+	 * @namespace
+	 */
+	var DialogRenderer = {
+		apiVersion: 2
+	};
+
+	// Mapping of ValueState to style class
+	DialogRenderer._mStateClasses = {};
+	DialogRenderer._mStateClasses[ValueState.None] = "";
+	DialogRenderer._mStateClasses[ValueState.Success] = "sapMDialogSuccess";
+	DialogRenderer._mStateClasses[ValueState.Warning] = "sapMDialogWarning";
+	DialogRenderer._mStateClasses[ValueState.Error] = "sapMDialogError";
+	DialogRenderer._mStateClasses[ValueState.Information] = "sapMDialogInformation";
+
+	/**
+	 * Renders the HTML for the Dialog control, using the provided {@link sap.ui.core.RenderManager}.
+	 *
+	 * @param {sap.ui.core.RenderManager} oRM The RenderManager that can be used for writing to the render output buffer.
+	 * @param {sap.ui.core.Control} oDialog An object representation of the control that should be rendered.
+	 */
+	DialogRenderer.render = function (oRM, oDialog) {
+		var sId = oDialog.getId(),
+			oHeader = oDialog._getAnyHeader(),
+			oSubHeader = oDialog.getSubHeader(),
+			oBeginButton = oDialog.getBeginButton(),
+			oEndButton = oDialog.getEndButton(),
+			sState = oDialog.getState(),
+			bStretch = oDialog.getStretch(),
+			bStretchOnPhone = oDialog.getStretchOnPhone() && Device.system.phone,
+			oValueStateText = oDialog.getAggregation("_valueState");
+
+		// write the HTML into the render manager
+		// the initial size of the dialog have to be 0, because if there is a large dialog content the initial size can be larger than the html's height (scroller)
+		// The scroller will make the initial window width smaller and in the next recalculation the maxWidth will be larger.
+
+		oRM.openStart("div", oDialog)
+			.style("width", oDialog.getContentWidth())
+			.style("height", oDialog.getContentHeight())
+			.class("sapMDialog")
+			.class("sapMDialog-CTX")
+			.class("sapMPopup-CTX");
+
+		if (oDialog.isOpen()) {
+			oRM.class("sapMDialogOpen");
+		}
+
+		if (window.devicePixelRatio > 1) {
+			oRM.class("sapMDialogHighPixelDensity");
+		}
+
+		if (oDialog._bDisableRepositioning) {
+			oRM.class("sapMDialogTouched");
+		}
+
+		if (bStretch || bStretchOnPhone) {
+			oRM.class("sapMDialogStretched");
+		}
+
+		oRM.class(DialogRenderer._mStateClasses[sState]);
+
+		// No Footer
+		var bNoToolbarAndNoButtons = !oDialog._oToolbar && !oBeginButton && !oEndButton;
+		var bEmptyToolbarAndNoButtons = oDialog._oToolbar && oDialog._isToolbarEmpty() && !oBeginButton && !oEndButton;
+		if (bNoToolbarAndNoButtons || bEmptyToolbarAndNoButtons) {
+			oRM.class("sapMDialog-NoFooter");
+		}
+
+		if (!oHeader) {
+			oRM.class("sapMDialog-NoHeader");
+		}
+
+		// ARIA
+		var sRole = oDialog.getProperty("role");
+
+		if (sState === ValueState.Error || sState === ValueState.Warning) {
+			sRole = DialogRoleType.AlertDialog;
+		}
+
+		oRM.accessibilityState(oDialog, {
+			role: sRole,
+			modal: true
+		});
+
+		if (oDialog._forceDisableScrolling) {
+			oRM.class("sapMDialogWithScrollCont");
+		}
+
+		if (oSubHeader && oSubHeader.getVisible()) {
+			oRM.class("sapMDialogWithSubHeader");
+			if (oSubHeader.getDesign() == library.ToolbarDesign.Info) {
+				oRM.class("sapMDialogSubHeaderInfoBar");
+			}
+		}
+
+		if (oDialog.getType() === DialogType.Message) {
+			oRM.class("sapMMessageDialog");
+		}
+
+		if (!oDialog.getVerticalScrolling()) {
+			oRM.class("sapMDialogVerScrollDisabled");
+		}
+
+		if (!oDialog.getHorizontalScrolling()) {
+			oRM.class("sapMDialogHorScrollDisabled");
+		}
+
+		if (Device.system.phone) {
+			oRM.class("sapMDialogPhone");
+		}
+
+		if (oDialog.getDraggable() && !bStretch) {
+			oRM.class("sapMDialogDraggable");
+		}
+
+		// test dialog with sap-ui-xx-formfactor=compact
+		if (library._bSizeCompact) {
+			oRM.class("sapUiSizeCompact");
+		}
+
+		var sTooltip = oDialog.getTooltip_AsString();
+
+		if (sTooltip) {
+			oRM.attr("title", sTooltip);
+		}
+
+		oRM.attr("tabindex", "-1");
+
+		oRM.openEnd();
+
+		if (Device.system.desktop) {
+
+			if (oDialog.getResizable() && !bStretch) {
+				oRM.icon("sap-icon://resize-corner", ["sapMDialogResizeHandler"], { "title": "" });
 			}
 
-			if (oSubHeader) {
-				oSubHeader.applyTagAndContextClassFor("subheader");
-			}
+			// Invisible element which is used to determine when desktop keyboard navigation
+			// has reached the first focusable element of a Dialog and went beyond.
+			// In that case, the controller will focus the last focusable element.
+			oRM.openStart("span", sId + "-firstfe")
+				.class("sapMDialogFirstFE")
+				.attr("tabindex", "0")
+				.openEnd()
+				.close("span");
+		}
 
-			// write the HTML into the render manager
-			// the initial size of the dialog have to be 0, because if there is a large dialog content the initial size can be larger then the html's height (scroller)
-			// The scroller will make the initial window width smaller and in the next recalculation the maxWidth will be larger.
-			var initialWidth = oControl.getContentWidth() ? ' width: ' + oControl.getContentWidth() + ';' : '';
-			var initialHeight = oControl.getContentHeight() ? ' height: ' + oControl.getContentHeight() + ';' : '';
-			var initialStyles = "style='" + initialWidth + initialHeight + "'";
+		if (oHeader) {
+			oHeader._applyContextClassFor("header");
+			oRM.openStart("header")
+				.class("sapMDialogTitle")
+				.openEnd()
+				.renderControl(oHeader)
+				.close("header");
+		}
 
-			oRm.write('<div ' + initialStyles);
-			oRm.writeControlData(oControl);
-			oRm.addClass("sapMDialog");
-			oRm.addClass("sapMDialog-CTX");
-			oRm.addClass("sapMPopup-CTX");
+		if (oSubHeader) {
+			oSubHeader._applyContextClassFor("subheader");
+			oRM.openStart("header")
+				.class("sapMDialogSubHeader")
+				.openEnd()
+				.renderControl(oSubHeader)
+				.close("header");
+		}
 
-			if (oControl.isOpen()) {
-				oRm.addClass("sapMDialogOpen");
-			}
+		if (oValueStateText) {
+			oRM.renderControl(oValueStateText);
+		}
 
-			if (window.devicePixelRatio > 1) {
-				oRm.addClass("sapMDialogHighPixelDensity");
-			}
+		oRM.openStart("section", sId + "-cont")
+			.class("sapMDialogSection")
+			.openEnd();
 
-			if (oControl._bDisableRepositioning) {
-				oRm.addClass("sapMDialogTouched");
-			}
+		oRM.openStart("div", sId + "-scroll")
+			.class("sapMDialogScroll")
+			.openEnd();
 
-			if (bStretch || (bStretchOnPhone)) {
-				oRm.addClass("sapMDialogStretched");
-			}
+		oRM.openStart("div", sId + "-scrollCont")
+			.class("sapMDialogScrollCont");
 
-			oRm.addClass(sap.m.Dialog._mStateClasses[sState]);
+		if (oDialog.getStretch() || oDialog.getContentHeight()) {
+			oRM.class("sapMDialogStretchContent");
+		}
 
-			// No Footer
-			var noToolbarAndNobuttons = !oControl._oToolbar && !oLeftButton && !oRightButton;
-			var emptyToolbarAndNoButtons = oControl._oToolbar && oControl._isToolbarEmpty() && !oLeftButton && !oRightButton;
-			if (noToolbarAndNobuttons || emptyToolbarAndNoButtons) {
-				oRm.addClass("sapMDialog-NoFooter");
-			}
+		oRM.openEnd();
 
-			if (!oHeader) {
-				oRm.addClass("sapMDialog-NoHeader");
-			}
+		oDialog.getContent().forEach(oRM.renderControl, oRM);
 
-			// ARIA
-			if (sState === "Error" || sState === "Warning") {
-				oRm.writeAccessibilityState(oControl, {
-					role: "alertdialog"
-				});
-			} else {
-				oRm.writeAccessibilityState(oControl, {
-					role: "dialog"
-				});
-			}
+		oRM.close("div")
+			.close("div")
+			.close("section");
 
-			if (oHeader) {
-				oRm.writeAccessibilityState(oControl, {
-					labelledby: oHeader.getId()
-				});
-			}
+		if (!(bNoToolbarAndNoButtons || bEmptyToolbarAndNoButtons)) {
+			oDialog._oToolbar._applyContextClassFor("footer");
+			oRM.openStart("footer")
+				.class("sapMDialogFooter")
+				.openEnd()
+				.renderControl(oDialog._oToolbar)
+				.close("footer");
+		}
 
-			if (oControl._forceDisableScrolling) {
-				oRm.addClass("sapMDialogWithScrollCont");
-			}
+		if (Device.system.desktop) {
+			// Invisible element which is used to determine when desktop keyboard navigation
+			// has reached the last focusable element of a dialog and went beyond.
+			// In that case, the controller will focus the first focusable element.
+			oRM.openStart("span", sId + "-lastfe")
+				.class("sapMDialogLastFE")
+				.attr("tabindex", "0")
+				.openEnd()
+				.close("span");
+		}
 
-			if (oSubHeader && oSubHeader.getVisible()) {
-				oRm.addClass("sapMDialogWithSubHeader");
-			}
+		oRM.close("div");
+	};
 
-			if (bMessage) {
-				oRm.addClass("sapMMessageDialog");
-			}
+	return DialogRenderer;
 
-			if (!bVerticalScrolling) {
-				oRm.addClass("sapMDialogVerScrollDisabled");
-			}
-
-			if (!bHorizontalScrolling) {
-				oRm.addClass("sapMDialogHorScrollDisabled");
-			}
-
-			if (sap.ui.Device.system.phone) {
-				oRm.addClass("sapMDialogPhone");
-			}
-
-			if (bDraggable && !bStretch) {
-				oRm.addClass("sapMDialogDraggable");
-			}
-
-			// test dialog with sap-ui-xx-formfactor=compact
-			if (sap.m._bSizeCompact) {
-				oRm.addClass("sapUiSizeCompact");
-			}
-
-			oRm.writeClasses();
-
-			var sTooltip = oControl.getTooltip_AsString();
-
-			if (sTooltip) {
-				oRm.writeAttributeEscaped("title", sTooltip);
-			}
-
-			oRm.writeAttribute("tabindex", "-1");
-
-			oRm.write(">");
-
-			if (sap.ui.Device.system.desktop) {
-
-				if (bResizable && !bStretch) {
-					oRm.write('<div class="sapMDialogResizeHandler"></div>');
-				}
-
-				// Invisible element which is used to determine when desktop keyboard navigation
-				// has reached the first focusable element of a dialog and went beyond. In that case, the controller
-				// will focus the last focusable element.
-				oRm.write('<span id="' + oControl.getId() + '-firstfe" tabindex="0"/>');
-			}
-
-			if (oHeader) {
-				oRm.renderControl(oHeader);
-			}
-
-			if (oSubHeader) {
-				oRm.renderControl(oSubHeader.addStyleClass("sapMDialogSubHeader"));
-			}
-
-			oRm.write('<section id="' + id + '-cont" class="sapMDialogSection">');
-			oRm.write('<div id="' + id + '-scroll" class="sapMDialogScroll">');
-			oRm.write('<div id="' + id + '-scrollCont" class="sapMDialogScrollCont">');
-
-			var aContent = oControl.getContent();
-
-			for (var i = 0; i < aContent.length; i++) {
-				oRm.renderControl(aContent[i]);
-			}
-
-			oRm.write("</div>");
-			oRm.write("</div>");
-			oRm.write("</section>");
-
-			if (!(noToolbarAndNobuttons || emptyToolbarAndNoButtons)) {
-				oRm.renderControl(oControl._oToolbar);
-			}
-
-			if (sap.ui.Device.system.desktop) {
-				// Invisible element which is used to determine when desktop keyboard navigation
-				// has reached the last focusable element of a dialog and went beyond. In that case, the controller
-				// will focus the first focusable element.
-				oRm.write('<span id="' + oControl.getId() + '-lastfe" tabindex="0"/>');
-			}
-
-			oRm.write("</div>");
-		};
-
-		return DialogRenderer;
-
-	}, /* bExport= */ true);
+}, /* bExport= */ true);

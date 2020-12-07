@@ -1,10 +1,15 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(["sap/m/semantic/SemanticConfiguration", "sap/ui/base/ManagedObject", "sap/ui/core/Element"], function (SemanticConfiguration, ManagedObject, Element) {
+sap.ui.define([
+	"sap/m/semantic/SemanticConfiguration",
+	"sap/ui/base/ManagedObject",
+	"sap/ui/core/Element",
+	"sap/ui/thirdparty/jquery"
+], function(SemanticConfiguration, ManagedObject, Element, jQuery) {
 	"use strict";
 
 	/**
@@ -20,7 +25,7 @@ sap.ui.define(["sap/m/semantic/SemanticConfiguration", "sap/ui/base/ManagedObjec
 	 * @abstract
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
@@ -50,7 +55,7 @@ sap.ui.define(["sap/m/semantic/SemanticConfiguration", "sap/ui/base/ManagedObjec
 
 				/**
 				 * The internal control instance, that is abstracted by the semantic control.
-				 * Can be {@link sap.m.Button}, {@link sap.m.OverflowButton} or {@link sap.m.Select}
+				 * Can be {@link sap.m.Button}, {@link sap.m.semantic.SemanticOverflowToolbarButton} or {@link sap.m.Select}
 				 */
 				_control: {
 					type: "sap.ui.core.Control",
@@ -142,10 +147,10 @@ sap.ui.define(["sap/m/semantic/SemanticConfiguration", "sap/ui/base/ManagedObjec
 	};
 
 	/**
-	 * Implementation of a commonly used function that adapts sap.ui.core.Element
-	 * to provide dom reference for opening popovers
-	 * @ return the dom reference of the actual wrapped control
-	 * @ public
+	 * Implementation of a commonly used function that adapts <code>sap.ui.core.Element</code>
+	 * to provide DOM reference for opening popovers.
+	 * @returns {Element} The DOM reference of the actual wrapped control
+	 * @public
 	 */
 	SemanticControl.prototype.getPopupAnchorDomRef = function() {
 		return this._getControl().getDomRef();
@@ -153,6 +158,34 @@ sap.ui.define(["sap/m/semantic/SemanticConfiguration", "sap/ui/base/ManagedObjec
 
 	SemanticControl.prototype.getDomRef = function(sSuffix) {
 		return this._getControl().getDomRef(sSuffix);
+	};
+
+	SemanticControl.prototype.addEventDelegate = function (oDelegate, oThis) {
+
+		jQuery.each(oDelegate, function(sEventType, fnCallback) {
+
+			if (typeof fnCallback === 'function') {
+
+				/* replace oEvent.srcControl with the semantic control
+				to prevent exposing the inner control */
+				var fnProxy = function(oEvent) {
+					oEvent.srcControl = this;
+					fnCallback.call(oThis, oEvent);
+				}.bind(this);
+
+				oDelegate[sEventType] = fnProxy;
+			}
+		}.bind(this));
+
+		this._getControl().addEventDelegate(oDelegate, oThis);
+
+		return this;
+	};
+
+	SemanticControl.prototype.removeEventDelegate = function (oDelegate) {
+
+		this._getControl().removeEventDelegate(oDelegate);
+		return this;
 	};
 
 	SemanticControl.prototype._getConfiguration = function () {
@@ -190,4 +223,4 @@ sap.ui.define(["sap/m/semantic/SemanticConfiguration", "sap/ui/base/ManagedObjec
 	};
 
 	return SemanticControl;
-}, /* bExport= */ false);
+});

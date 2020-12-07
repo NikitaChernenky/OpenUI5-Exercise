@@ -1,12 +1,19 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport'],
-	function(jQuery, ValueStateSupport) {
+sap.ui.define(['sap/ui/core/ValueStateSupport', 'sap/ui/core/IndicationColorSupport', 'sap/ui/core/InvisibleText', 'sap/ui/core/library'],
+	function(ValueStateSupport, IndicationColorSupport, InvisibleText, coreLibrary) {
 	"use strict";
+
+
+	// shortcut for sap.ui.core.TextDirection
+	var TextDirection = coreLibrary.TextDirection;
+
+	// shortcut for sap.ui.core.ValueState
+	var ValueState = coreLibrary.ValueState;
 
 
 	/**
@@ -14,6 +21,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport'],
 	 * @namespace
 	 */
 	var ObjectStatusRenderer = {
+			apiVersion: 2
 	};
 
 
@@ -21,101 +29,120 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport'],
 	 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
 	 *
 	 * @param {sap.ui.core.RenderManager} oRm The RenderManager that can be used for writing to the render output buffer
-	 * @param {sap.ui.core.Control} oControl An object representation of the control that should be rendered
+	 * @param {sap.ui.core.Control} oObjStatus An object representation of the control that should be rendered
 	 */
 	ObjectStatusRenderer.render = function(oRm, oObjStatus){
-		if (!oObjStatus._isEmpty()) {
+		oRm.openStart("div", oObjStatus);
+
+		if (oObjStatus._isEmpty()) {
+			oRm.style("display", "none");
+			oRm.openEnd();
+		} else {
 
 			var sState = oObjStatus.getState();
+			var bInverted = oObjStatus.getInverted();
 			var sTextDir = oObjStatus.getTextDirection();
-			var sTitleDir = sTextDir;
+			var oCore = sap.ui.getCore();
+			var bPageRTL = oCore.getConfiguration().getRTL();
+			var oAccAttributes = {
+				roledescription: oCore.getLibraryResourceBundle("sap.m").getText("OBJECT_STATUS")
+			};
+			var sValueStateText;
+			var accValueText;
 
-			oRm.write("<div");
-			oRm.writeControlData(oObjStatus);
+			if (sTextDir === TextDirection.Inherit) {
+				sTextDir = bPageRTL ? TextDirection.RTL : TextDirection.LTR;
+			}
 
 			var sTooltip = oObjStatus.getTooltip_AsString();
 			if (sTooltip) {
-				oRm.writeAttributeEscaped("title", sTooltip);
+				oRm.attr("title", sTooltip);
 			}
 
-			oRm.addClass("sapMObjStatus");
-			oRm.addClass("sapMObjStatus" + sState);
-			oRm.writeClasses();
-
-			/* ARIA region adding the aria-describedby to ObjectStatus */
-
-			if (sState != sap.ui.core.ValueState.None) {
-				oRm.writeAccessibilityState(oObjStatus, {
-					describedby: {
-						value: oObjStatus.getId() + "sapSRH",
-						append: true
-					}
-				});
+			oRm.class("sapMObjStatus");
+			oRm.class("sapMObjStatus" + sState);
+			if (bInverted) {
+				oRm.class("sapMObjStatusInverted");
 			}
 
-			oRm.write(">");
+			if (oObjStatus._isActive()) {
+				oRm.class("sapMObjStatusActive");
+				oRm.attr("tabindex", "0");
+				oAccAttributes.role = "button";
+			} else {
+				oAccAttributes.role = "group";
+			}
+
+			oRm.accessibilityState(oObjStatus, oAccAttributes);
+
+			oRm.openEnd();
 
 			if (oObjStatus.getTitle()) {
-				var bPageRTL = sap.ui.getCore().getConfiguration().getRTL();
-				// if the textDirection is inherit, set the one that the page has for the title
-				if (sTitleDir === sap.ui.core.TextDirection.Inherit) {
-					sTitleDir = bPageRTL ? sap.ui.core.TextDirection.RTL : sap.ui.core.TextDirection.LTR;
-				}
 
-				oRm.write("<span");
-				oRm.writeAttributeEscaped("id", oObjStatus.getId() + "-title");
-				oRm.addClass("sapMObjStatusTitle");
+				oRm.openStart("span", oObjStatus.getId() + "-title");
+				oRm.class("sapMObjStatusTitle");
 
-				if (sTitleDir) {
-					oRm.writeAttribute("dir", sTitleDir.toLowerCase());
+				if (sTextDir) {
+					oRm.attr("dir", sTextDir.toLowerCase());
 				}
-				oRm.writeClasses();
-				oRm.write(">");
-				oRm.writeEscaped(oObjStatus.getTitle() + ":");
-				oRm.write("</span>");
+				oRm.openEnd();
+				oRm.text(oObjStatus.getTitle() + ":");
+				oRm.close("span");
+			}
+
+			if (oObjStatus._isActive()) {
+				oRm.openStart("span", oObjStatus.getId() + "-link");
+				oRm.class("sapMObjStatusLink");
+				oRm.openEnd();
 			}
 
 			if (oObjStatus.getIcon()) {
-				oRm.write("<span");
-				oRm.writeAttributeEscaped("id", oObjStatus.getId() + "-icon");
-				oRm.addClass("sapMObjStatusIcon");
-				oRm.writeClasses();
-				oRm.write(">");
+				oRm.openStart("span", oObjStatus.getId() + "-statusIcon");
+				oRm.class("sapMObjStatusIcon");
+				if (!oObjStatus.getText()) {
+					oRm.class("sapMObjStatusIconOnly");
+				}
+				oRm.openEnd();
 				oRm.renderControl(oObjStatus._getImageControl());
-				oRm.write("</span>");
+				oRm.close("span");
 			}
 
 			if (oObjStatus.getText()) {
-				oRm.write("<span");
-				oRm.writeAttributeEscaped("id", oObjStatus.getId() + "-text");
-				oRm.addClass("sapMObjStatusText");
+				oRm.openStart("span", oObjStatus.getId() + "-text");
+				oRm.class("sapMObjStatusText");
 
-				if (sTextDir && sTextDir !== sap.ui.core.TextDirection.Inherit) {
-					oRm.writeAttribute("dir", sTextDir.toLowerCase());
+				if (sTextDir) {
+					oRm.attr("dir", sTextDir.toLowerCase());
 				}
 
-				oRm.writeClasses();
-				oRm.write(">");
-				oRm.writeEscaped(oObjStatus.getText());
-				oRm.write("</span>");
+				oRm.openEnd();
+				oRm.text(oObjStatus.getText());
+				oRm.close("span");
 			}
 
+			if (oObjStatus._isActive()) {
+				oRm.close("span");
+			}
 			/* ARIA adding hidden node in span element */
-			if (sState != sap.ui.core.ValueState.None) {
-				oRm.write("<span");
-				oRm.writeAttributeEscaped("id", oObjStatus.getId() + "sapSRH");
-				oRm.addClass("sapUiInvisibleText");
-				oRm.writeClasses();
-				oRm.writeAccessibilityState({
-					hidden: false
-				});
-				oRm.write(">");
-				oRm.writeEscaped(ValueStateSupport.getAdditionalText(sState));
-				oRm.write("</span>");
+			if (sState != ValueState.None) {
+				sValueStateText = ValueStateSupport.getAdditionalText(sState);
+				if (sValueStateText) {
+					accValueText = sValueStateText;
+				} else {
+					accValueText = IndicationColorSupport.getAdditionalText(sState);
+				}
+				if (accValueText) {
+					oRm.openStart("span", oObjStatus.getId() + "sapSRH");
+					oRm.class("sapUiPseudoInvisibleText");
+					oRm.openEnd();
+					oRm.text(accValueText);
+					oRm.close("span");
+				}
 			}
 
-			oRm.write("</div>");
 		}
+
+		oRm.close("div");
 	};
 
 	return ObjectStatusRenderer;

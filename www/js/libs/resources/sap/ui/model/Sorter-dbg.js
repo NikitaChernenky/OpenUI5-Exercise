@@ -1,34 +1,40 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides the concept of a sorter for list bindings
-sap.ui.define(['sap/ui/base/Object'],
-	function(BaseObject) {
+sap.ui.define(['sap/ui/base/Object', "sap/base/Log"],
+	function(BaseObject, Log) {
 	"use strict";
 
 
 	/**
 	 *
-	 * Constructor for Sorter
+	 * Constructor for Sorter.
 	 *
 	 * @class
-	 * Sorter for the list binding
-	 * This object defines the sort order for the list binding.
+	 * Sorter for list bindings.
+	 *
+	 * Instances of this class define the sort order for a list binding.
 	 *
 	 *
-	 * @param {String} sPath the binding path used for sorting
+	 * @param {string} sPath the binding path used for sorting
 	 * @param {boolean} [bDescending=false] whether the sort order should be descending
 	 * @param {boolean|function} [vGroup] configure grouping of the content, can either be true to enable grouping
 	 *        based on the raw model property value, or a function which calculates the group value out of the
 	 *        context (e.g. oContext.getProperty("date").getYear() for year grouping). The control needs to
 	 *        implement the grouping behaviour for the aggregation which you want to group. In case a function
 	 *        is provided it must either return a primitive type value as the group key or an object containing
-	 *        a "key" property an may contain additional properties needed for group visualization.
-	 * @param {function} [fnComparator] a custom comparator function, which is used for clientside sorting instead
-	 *        of the default comparator method.
+	 *        a "key" property and additional properties needed for group visualization.
+	 *        <b>Note:</b> Grouping is only possible (and only makes sense) for the primary sort property.
+	 * @param {function} [fnComparator] A custom comparator function, which is used for client-side sorting instead
+	 *        of the default comparator method. Information about parameters and expected return values of such a
+	 *        method can be found in the {@link #.defaultComparator default comparator} documentation.
+	 *        <b>Note:</b> Custom comparator functions are meant to be used on the client. Models that implement
+	 *        sorting in the backend usually don't support custom comparator functions. Consult the documentation
+	 *        of the specific model implementation.
 	 * @public
 	 * @alias sap.ui.model.Sorter
 	 * @extends sap.ui.base.Object
@@ -48,6 +54,9 @@ sap.ui.define(['sap/ui/base/Object'],
 			// if a model separator is found in the path, extract model name
 			var iSeparatorPos = this.sPath.indexOf(">");
 			if (iSeparatorPos > 0) {
+				// Model names are ignored, this must be kept for compatibility reasons. But using model names in the
+				// sorter path make no technical sense as the binding cannot access any other models.
+				Log.error("Model names are not allowed in sorter-paths: \"" + this.sPath + "\"");
 				this.sPath = this.sPath.substr(iSeparatorPos + 1);
 			}
 
@@ -80,6 +89,19 @@ sap.ui.define(['sap/ui/base/Object'],
 				};
 			}
 			return oGroup;
+		},
+
+		/**
+		 * Returns the group function of this Sorter. If grouping is not enabled on this Sorter, it will return
+		 * undefined, if no explicit group function has been defined the default group function is returned.
+		 * The returned function is bound to its Sorter, so it will group according to its own property path,
+		 * even if it is used in the context of another Sorter.
+		 *
+		 * @return {function} The group function
+		 * @public
+		 */
+		getGroupFunction : function() {
+			return this.fnGroup && this.fnGroup.bind(this);
 		}
 
 	});
@@ -89,14 +111,14 @@ sap.ui.define(['sap/ui/base/Object'],
 	 *
 	 * This is the default comparator function used for clientside sorting, if no custom comparator is given in the
 	 * constructor. It does compare just by using equal/less than/greater than with automatic type casting, except
-	 * for null values, which are always last, and string values where localeCompare is used.
+	 * for null values, which are last in ascending order, and string values where localeCompare is used.
 	 *
 	 * The comparator method returns -1, 0 or 1, depending on the order of the two items and is
 	 * suitable to be used as a comparator method for Array.sort.
 	 *
 	 * @param {any} a the first value to compare
 	 * @param {any} b the second value to compare
-	 * @returns {integer} -1, 0 or 1 depending on the compare result
+	 * @returns {int} -1, 0 or 1 depending on the compare result
 	 * @public
 	 */
 	Sorter.defaultComparator = function(a, b) {

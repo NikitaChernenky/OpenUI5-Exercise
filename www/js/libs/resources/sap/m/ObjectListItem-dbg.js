@@ -1,13 +1,52 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.ObjectListItem.
-sap.ui.define(['jquery.sap.global', './ListItemBase', './library', 'sap/ui/core/IconPool'],
-	function(jQuery, ListItemBase, library, IconPool) {
+sap.ui.define([
+	'sap/ui/core/Control',
+	'sap/ui/base/ManagedObjectObserver',
+	'./ListItemBase',
+	'./library',
+	'sap/ui/core/IconPool',
+	'sap/m/ObjectNumber',
+	'sap/ui/core/library',
+	'./ObjectMarker',
+	'./Text',
+	'./ObjectListItemRenderer'
+],
+function(
+	Control,
+	ManagedObjectObserver,
+	ListItemBase,
+	library,
+	IconPool,
+	ObjectNumber,
+	coreLibrary,
+	ObjectMarker,
+	Text,
+	ObjectListItemRenderer
+	) {
 		"use strict";
+
+
+
+		// shortcut for sap.m.ObjectMarkerType
+		var ObjectMarkerType = library.ObjectMarkerType;
+
+		// shortcut for sap.m.ImageHelper
+		var ImageHelper = library.ImageHelper;
+
+		// shortcut for sap.ui.core.TextAlign
+		var TextAlign = coreLibrary.TextAlign;
+
+		// shortcut for sap.ui.core.TextDirection
+		var TextDirection = coreLibrary.TextDirection;
+
+		// shortcut for sap.ui.core.ValueState
+		var ValueState = coreLibrary.ValueState;
 
 
 
@@ -19,13 +58,16 @@ sap.ui.define(['jquery.sap.global', './ListItemBase', './library', 'sap/ui/core/
 		 *
 		 * @class
 		 * ObjectListItem is a display control that provides summary information about an object as a list item. The ObjectListItem title is the key identifier of the object. Additional text and icons can be used to further distinguish it from other objects. Attributes and statuses can be used to provide additional meaning about the object to the user.
+		 *
+		 * <b>Note:</b> The control must only be used in the context of a list.
 		 * @extends sap.m.ListItemBase
-		 * @version 1.36.8
+		 * @version 1.84.1
 		 *
 		 * @constructor
 		 * @public
 		 * @since 1.12
 		 * @alias sap.m.ObjectListItem
+		 * @see {@link fiori:https://experience.sap.com/fiori-design-web/object-list-item/ Object List Item}
 		 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
 		 */
 		var ObjectListItem = ListItemBase.extend("sap.m.ObjectListItem", /** @lends sap.m.ObjectListItem.prototype */ { metadata : {
@@ -64,62 +106,78 @@ sap.ui.define(['jquery.sap.global', './ListItemBase', './library', 'sap/ui/core/
 				activeIcon : {type : "sap.ui.core.URI", group : "Misc", defaultValue : null},
 
 				/**
-				 * By default, this is set to true but then one or more requests are sent trying to get the density perfect version of image (in case this version of image dоesn't exist on the server).
+				 * By default, this is set to true but then one or more requests are sent trying to get the density perfect version of image (in case this version of image doesn't exist on the server).
 				 *
 				 * If bandwidth is key for the application, set this value to false.
 				 */
 				iconDensityAware : {type : "boolean", group : "Misc", defaultValue : true},
 
 				/**
-				 * Sets the favorite state for the ObjectListItem.
+				 * Sets the favorite state for the ObjectListItem.<br><br>
+				 *
 				 * @since 1.16.0
+				 * @deprecated as of version 1.42.0, replaced by <code>markers</code> aggregation.
+				 * Add {@link sap.m.ObjectMarker} with type <code>sap.m.ObjectMarkerType.Favorite</code>.
+				 * You should use either this property or the <code>markers</code> aggregation, using both may lead to unpredicted behavior.
 				 */
-				markFavorite : {type : "boolean", group : "Misc", defaultValue : null},
+				markFavorite : {type : "boolean", group : "Misc", defaultValue : null, deprecated: true},
 
 				/**
-				 * Sets the flagged state for the ObjectListItem.
+				 * Sets the flagged state for the ObjectListItem.<br><br>
+				 *
 				 * @since 1.16.0
+				 * @deprecated as of version 1.42.0, replaced by <code>markers</code> aggregation.
+				 * Add {@link sap.m.ObjectMarker} with type <code>sap.m.ObjectMarkerType.Flagged</code>.
+				 * You should use either this property or the <code>markers</code> aggregation, using both may lead to unpredicted behavior.
 				 */
-				markFlagged : {type : "boolean", group : "Misc", defaultValue : null},
+				markFlagged : {type : "boolean", group : "Misc", defaultValue : null, deprecated: true},
 
 				/**
-				 * If set to true, the ObjectListItem can be marked with icons such as favorite and flag.
+				 * If set to true, the ObjectListItem can be marked with icons such as favorite and flag.<br><br>
+				 *
 				 * @since 1.16.0
+				 * @deprecated as of version 1.42.0, replaced by <code>markers</code> aggregation.
+				 * This property is valid only if you are using the already deprecated properties - <code>markFlagged</code>, <code>markFavorite</code>, and <code>markLocked</code>.
+				 * If you are using the <code>markers</code> aggregation, the visibility of the markers depends on what is set in the aggregation itself.
 				 */
-				showMarkers : {type : "boolean", group : "Misc", defaultValue : null},
+				showMarkers : {type : "boolean", group : "Misc", defaultValue : null, deprecated: true},
 
 				/**
 				 * Defines the ObjectListItem number and numberUnit value state.
 				 * @since 1.16.0
 				 */
-				numberState : {type : "sap.ui.core.ValueState", group : "Misc", defaultValue : sap.ui.core.ValueState.None},
+				numberState : {type : "sap.ui.core.ValueState", group : "Misc", defaultValue : ValueState.None},
 
 				/**
 				 * Determines the text direction of the item title.
 				 * Available options for the title direction are LTR (left-to-right) and RTL (right-to-left).
 				 * By default the item title inherits the text direction from its parent.
 				 */
-				titleTextDirection: {type : "sap.ui.core.TextDirection", group : "Appearance", defaultValue : sap.ui.core.TextDirection.Inherit},
+				titleTextDirection: {type : "sap.ui.core.TextDirection", group : "Appearance", defaultValue : TextDirection.Inherit},
 
 				/**
 				 * Determines the text direction of the item intro.
 				 * Available options for the intro direction are LTR (left-to-right) and RTL (right-to-left).
 				 * By default the item intro inherits the text direction from its parent.
 				 */
-				introTextDirection: {type : "sap.ui.core.TextDirection", group : "Appearance", defaultValue : sap.ui.core.TextDirection.Inherit},
+				introTextDirection: {type : "sap.ui.core.TextDirection", group : "Appearance", defaultValue : TextDirection.Inherit},
 
 				/**
 				 * Determines the text direction of the item number.
 				 * Available options for the number direction are LTR (left-to-right) and RTL (right-to-left).
 				 * By default the item number inherits the text direction from its parent.
 				 */
-				numberTextDirection: {type : "sap.ui.core.TextDirection", group : "Appearance", defaultValue : sap.ui.core.TextDirection.Inherit},
+				numberTextDirection: {type : "sap.ui.core.TextDirection", group : "Appearance", defaultValue : TextDirection.Inherit},
 
 				/**
-				 * Sets the locked state of the ObjectListItem.
+				 * Sets the locked state of the ObjectListItem.<br><br>
+				 *
 				 * @since 1.28
+				 * @deprecated as of version 1.42.0, replaced by <code>markers</code> aggregation.
+				 * Add {@link sap.m.ObjectMarker} with type <code>sap.m.ObjectMarkerType.Locked</code>.
+				 * You should use either this property or the <code>markers</code> aggregation, using both may lead to unpredicted behavior.<br><br>
 				 */
-				markLocked : {type : "boolean", group : "Misc", defaultValue : false}
+				markLocked : {type : "boolean", group : "Misc", defaultValue : false, deprecated: true}
 			},
 			defaultAggregation : "attributes",
 			aggregations : {
@@ -137,12 +195,33 @@ sap.ui.define(['jquery.sap.global', './ListItemBase', './library', 'sap/ui/core/
 				/**
 				 * Second status text field displayed on the right side of the attributes.
 				 */
-				secondStatus : {type : "sap.m.ObjectStatus", multiple : false}
-			}
+				secondStatus : {type : "sap.m.ObjectStatus", multiple : false},
+
+				/**
+				 * List of markers (icon and/or text) that can be displayed for the <code>ObjectListItems</code>, such as favorite and flagged.<br><br>
+				 * <b>Note:</b> You should use either this aggregation or the already deprecated properties - <code>markFlagged</code>, <code>markFavorite</code>, and <code>markLocked</code>. Using both can lead to unexpected results.
+				 */
+				markers : {type : "sap.m.ObjectMarker", multiple : true, singularName : "marker"},
+
+				/**
+				 * Internal <code>sap.m.ObjectNumber</code> control which is created based on the <code>number</code>, <code>numberUnit</code>, <code>numberState</code>, <code>numberTextDirection</code>
+				 */
+				_objectNumber: {type: "sap.m.ObjectNumber", multiple: false, visibility: "hidden"}
+			},
+			designtime: "sap/m/designtime/ObjectListItem.designtime",
+			dnd: { draggable: true, droppable: true }
 		}});
 
-		// get resource translation bundle;
-		var oLibraryResourceBundle = sap.ui.getCore().getLibraryResourceBundle("sap.m");
+		/**
+		 * Initializes the control.
+		 * @param oEvent
+		 */
+		ObjectListItem.prototype.init = function (oEvent) {
+			this._generateObjectNumber();
+
+			this._observerObjectMarkerChanges = this._observerObjectMarkerChanges.bind(this);
+			this._oMarkersObservers = {};
+		};
 
 		/**
 		 * @private
@@ -153,26 +232,6 @@ sap.ui.define(['jquery.sap.global', './ListItemBase', './library', 'sap/ui/core/
 				this._oImageControl.destroy();
 			}
 
-			if (this._oPlaceholderIcon) {
-				this._oPlaceholderIcon.destroy();
-				this._oPlaceholderIcon = undefined;
-			}
-
-			if (this._oFavIcon) {
-				this._oFavIcon.destroy();
-				this._oFavIcon = undefined;
-			}
-
-			if (this._oFlagIcon) {
-				this._oFlagIcon.destroy();
-				this._oFlagIcon = undefined;
-			}
-
-			if (this._oLockIcon) {
-				this._oLockIcon.destroy();
-				this._oLockIcon = undefined;
-			}
-
 			if (this._oTitleText) {
 				this._oTitleText.destroy();
 				this._oTitleText = undefined;
@@ -181,9 +240,37 @@ sap.ui.define(['jquery.sap.global', './ListItemBase', './library', 'sap/ui/core/
 			ListItemBase.prototype.exit.apply(this);
 		};
 
+		ObjectListItem.prototype.onAfterRendering = function() {
+			var oObjectNumber = this.getAggregation("_objectNumber"),
+				bPageRTL = sap.ui.getCore().getConfiguration().getRTL(),
+				sTextAlign = bPageRTL ? TextAlign.Left : TextAlign.Right;
+
+			if (oObjectNumber && oObjectNumber.getNumber()) { // adjust alignment according the design specification
+				oObjectNumber.setTextAlign(sTextAlign);
+			}
+		};
+
+		/**
+		 * Initiates the <code>sap.m.ObjectNumber</code> aggregation based on the <code>number</code>, <code>numberUnit</code>, <code>numberState</code> and <code>numberTextDirection</code> properties.
+		 * @private
+		 */
+		ObjectListItem.prototype._generateObjectNumber = function () {
+			var sNumber = this.getNumber(),
+				sNumberUnit = this.getNumberUnit(),
+				oState = this.getNumberState(),
+				oTextDirection = this.getNumberTextDirection();
+
+			this.setAggregation("_objectNumber", new ObjectNumber(this.getId() + "-ObjectNumber", {
+				number: sNumber,
+				unit: sNumberUnit,
+				state: oState,
+				textDirection: oTextDirection
+			}), true);
+		};
+
 		/**
 		 * @private
-		 * @returns {boolean}
+		 * @returns {boolean} If the sap.m.ObjectListItem has attributes
 		 */
 		ObjectListItem.prototype._hasAttributes = function() {
 			var attributes = this.getAttributes();
@@ -199,7 +286,7 @@ sap.ui.define(['jquery.sap.global', './ListItemBase', './library', 'sap/ui/core/
 
 		/**
 		 * @private
-		 * @returns {boolean}
+		 * @returns {boolean} If the sap.m.ObjectListItem has status
 		 */
 		ObjectListItem.prototype._hasStatus = function() {
 			return ((this.getFirstStatus() && !this.getFirstStatus()._isEmpty())
@@ -208,16 +295,16 @@ sap.ui.define(['jquery.sap.global', './ListItemBase', './library', 'sap/ui/core/
 
 		/**
 		 * @private
-		 * @returns {boolean}
+		 * @returns {boolean} If the sap.m.ObjectListItem has bottom content
 		 */
 		ObjectListItem.prototype._hasBottomContent = function() {
 
-			return (this._hasAttributes() || this._hasStatus() || this.getShowMarkers() || this.getMarkLocked());
+			return (this._hasAttributes() || this._hasStatus() || this.getShowMarkers() || this.getMarkLocked() || this._getVisibleMarkers().length > 0);
 		};
 
 		/**
 		 * @private
-		 * @returns {Array}
+		 * @returns {Array} The visible attributes of the control
 		 */
 		ObjectListItem.prototype._getVisibleAttributes = function() {
 
@@ -234,25 +321,53 @@ sap.ui.define(['jquery.sap.global', './ListItemBase', './library', 'sap/ui/core/
 		};
 
 		/**
+		 * @private
+		 * @returns {Array} The visible markers of the control
+		 */
+		ObjectListItem.prototype._getVisibleMarkers = function() {
+
+			var aAllMarkers = this.getMarkers();
+			var aVisibleMarkers = [];
+
+			for (var i = 0; i < aAllMarkers.length; i++) {
+				if (aAllMarkers[i].getVisible()) {
+					aVisibleMarkers.push(aAllMarkers[i]);
+				}
+			}
+
+			return aVisibleMarkers;
+		};
+
+		/**
 		 * Lazy loads ObjectListItem's image.
-		 *
+		 * @returns {object} The image control
 		 * @private
 		 */
 		ObjectListItem.prototype._getImageControl = function() {
 
 			var sImgId = this.getId() + '-img';
 			var sSize = "2.5rem";
-			var mProperties = {
-				src : this.getIcon(),
-				height : sSize,
-				width : sSize,
-				size: sSize,
-				useIconTooltip : false,
-				densityAware : this.getIconDensityAware()
-			};
+			var mProperties;
+			if (IconPool.isIconURI(this.getIcon())) {
+				mProperties = {
+					src : this.getIcon(),
+					height : sSize,
+					width : sSize,
+					size: sSize,
+					useIconTooltip : false,
+					densityAware : this.getIconDensityAware()
+				};
+			} else {
+				mProperties = {
+					src : this.getIcon(),
+					useIconTooltip : false,
+					densityAware : this.getIconDensityAware()
+				};
+			}
+
 			var aCssClasses = ['sapMObjLIcon'];
 
-			this._oImageControl = sap.m.ImageHelper.getImageControl(sImgId, this._oImageControl, this, mProperties, aCssClasses);
+			this._oImageControl = ImageHelper.getImageControl(sImgId, this._oImageControl, this, mProperties, aCssClasses);
 
 			return this._oImageControl;
 		};
@@ -282,88 +397,237 @@ sap.ui.define(['jquery.sap.global', './ListItemBase', './library', 'sap/ui/core/
 			}
 		};
 
-		/**
-		 * @private
-		 * @returns Flag icon control
+		/*
+		 * Sets the <code>number</code> property of the control.
+		 * @param {string} sNumber <code>Number</code> showed in <code>ObjectListItem</code>
+		 * @override
+		 * @returns {sap.m.ObjectListItem} this pointer for chaining
 		 */
-			//TODO Remove placeholder when Safari iconFont issue is addressed.
-		ObjectListItem.prototype._getPlaceholderIcon = function() {
+		ObjectListItem.prototype.setNumber = function (sNumber) {
+			//Do not rerender the whole control ObjectListItem control
+			this.setProperty('number', sNumber, true);
+			//Rerender only the ObjectNumber internal private field
+			this.getAggregation("_objectNumber").setNumber(sNumber);
 
-			if (!this._oPlaceholderIcon) {
+			return this;
+		};
 
-				var oPlaceholderIconUri = IconPool.getIconURI("fridge");
-				this._oPlaceholderIcon = IconPool.createControlByURI({
-					id: this.getId() + "-placeholder",
-					useIconTooltip : false,
-					src: oPlaceholderIconUri
-				});
+		/*
+		 * Sets the <code>numberUnit</code> property of the control.
+		 * @param {string} sNumberUnit <code>NumberUnit</code> showed in <code>ObjectListItem</code>
+		 * @override
+		 * @returns {sap.m.ObjectListItem} this pointer for chaining
+		 */
+		ObjectListItem.prototype.setNumberUnit = function (sNumberUnit) {
+			//Do not rerender the whole control but only ObjectNumber control
+			this.setProperty('numberUnit', sNumberUnit, true);
+			//Rerender only the ObjectNumber internal private field
+			this.getAggregation('_objectNumber').setUnit(sNumberUnit);
 
-				this._oPlaceholderIcon.addStyleClass("sapMObjStatusMarkerInvisible");
+			return this;
+		};
+
+		/*
+		 * Sets the <code>numberTextDirection</code> property of the control.
+		 * @param {sap.ui.core.TextDirection} oTextDirection The text direction of the internal <code>ObjectNumber</code>
+		 * @override
+		 * @returns {sap.m.ObjectListItem} this pointer for chaining
+		 */
+		ObjectListItem.prototype.setNumberTextDirection = function (oTextDirection) {
+			//Do not rerender the whole control but only ObjectNumber control
+			this.setProperty('numberTextDirection', oTextDirection, true);
+			//Rerender only the ObjectNumber internal private field
+			this.getAggregation("_objectNumber").setTextDirection(oTextDirection);
+
+			return this;
+		};
+
+		/*
+		 * Sets the <code>numberState</code> property of the control.
+		 * @param {sap.ui.core.ValueState} oValueState The <code>valueState</code> of the internal <code>ObjectNumber</code>
+		 * @override
+		 * @returns {sap.m.ObjectListItem} this pointer for chaining
+		 */
+		ObjectListItem.prototype.setNumberState = function (oValueState) {
+			//Do not rerender the whole control but only ObjectNumber control
+			this.setProperty('numberState', oValueState, true);
+			//Rerender only the ObjectNumber internal private field
+			this.getAggregation("_objectNumber").setState(oValueState);
+
+			return this;
+		};
+
+		/**
+		 * Sets the visibility value of the Favorite marker.
+		 * @override
+		 * @public
+		 * @param {boolean} bMarked the new value
+		 * @returns {sap.m.ObjectListItem} this pointer for chaining
+		 */
+		ObjectListItem.prototype.setMarkFavorite = function (bMarked) {
+			return this._setOldMarkers(ObjectMarkerType.Favorite, bMarked);
+		};
+
+		/**
+		 * Sets the visibility value of the Flagged marker.
+		 * @override
+		 * @public
+		 * @param {boolean} bMarked the new value
+		 * @returns {sap.m.ObjectListItem} this pointer for chaining
+		 */
+		ObjectListItem.prototype.setMarkFlagged = function (bMarked) {
+			return this._setOldMarkers(ObjectMarkerType.Flagged, bMarked);
+		};
+
+		/**
+		 * Sets the visibility value of the Favorite marker.
+		 * @override
+		 * @public
+		 * @param {boolean} bMarked the new value
+		 * @returns {sap.m.ObjectListItem} this pointer for chaining
+		 */
+		ObjectListItem.prototype.setMarkLocked = function (bMarked) {
+			return this._setOldMarkers(ObjectMarkerType.Locked, bMarked);
+		};
+
+		/**
+		 * Sets the visibility value of the Flagged and Favorite markers.
+		 * @override
+		 * @public
+		 * @param {boolean} bMarked the new value
+		 * @returns {sap.m.ObjectListItem} this pointer for chaining
+		 */
+		ObjectListItem.prototype.setShowMarkers = function (bMarked) {
+			var sMarkerType;
+			var aAllMarkers = this.getMarkers();
+
+			this.setProperty("showMarkers", bMarked, false);
+
+			for (var i = 0; i < aAllMarkers.length; i++) {
+				sMarkerType = aAllMarkers[i].getType();
+
+				if ((sMarkerType === ObjectMarkerType.Flagged && this.getMarkFlagged()) ||
+					(sMarkerType === ObjectMarkerType.Favorite && this.getMarkFavorite()) ||
+					(sMarkerType === ObjectMarkerType.Locked && this.getMarkLocked())) {
+						aAllMarkers[i].setVisible(bMarked);
+				}
 			}
-			return this._oPlaceholderIcon;
+
+			return this;
+		};
+
+		ObjectListItem.prototype.addMarker = function(oObject) {
+			this._startObservingMarker(oObject);
+
+			return Control.prototype.addAggregation.call(this, "markers", oObject);
+		};
+
+		ObjectListItem.prototype.insertMarker = function(oObject, iIndex) {
+			this._startObservingMarker(oObject);
+
+			return Control.prototype.insertAggregation.call(this, "markers", oObject, iIndex);
+		};
+
+		ObjectListItem.prototype.removeMarker = function(vObject) {
+			var oObject = Control.prototype.removeAggregation.call(this, "markers", vObject);
+
+			this._stopObservingMarker(oObject);
+
+			return oObject;
+		};
+
+		ObjectListItem.prototype.removeAllMarkers = function() {
+			var aItems = Control.prototype.removeAllAggregation.call(this, "markers");
+
+			for (var i = 0; i < aItems.length; i++) {
+				this._stopObservingMarker(aItems[i]);
+			}
+
+			return aItems;
+		};
+
+		ObjectListItem.prototype.destroyMarkers = function() {
+			this.getMarkers().forEach(function (oMarker) {
+				this._stopObservingMarker(oMarker);
+			}, this);
+
+			return Control.prototype.destroyAggregation.call(this, "markers");
+		};
+
+		ObjectListItem.prototype._observerObjectMarkerChanges = function (oChanges) {
+			if (oChanges.current !== oChanges.old) {
+				this.invalidate();
+			}
+		};
+
+		ObjectListItem.prototype._startObservingMarker = function (oMarker) {
+			var oObserver = new ManagedObjectObserver(this._observerObjectMarkerChanges);
+			this._oMarkersObservers[oMarker.getId()] = oObserver;
+
+			oObserver.observe(oMarker, { properties: true });
+
+			return this;
+		};
+
+		ObjectListItem.prototype._stopObservingMarker = function (oMarker) {
+			var sMarkerId = oMarker.getId();
+
+			this._oMarkersObservers[sMarkerId].disconnect();
+			delete this._oMarkersObservers[sMarkerId];
+
+			return this;
 		};
 
 		/**
 		 * @private
-		 * @returns Flag icon control
+		 * @param {string} markerType the type of the marker which should be created to updated
+		 * @param {boolean} bMarked the new value
+		 * @returns {sap.m.ObjectListItem} this pointer for chaining
 		 */
-		ObjectListItem.prototype._getFlagIcon = function() {
+		ObjectListItem.prototype._setOldMarkers = function (markerType, bMarked) {
+			var aAllMarkers = this.getMarkers();
+			var bHasMarker = false;
+			var oIds = {
+				Flagged : "-flag",
+				Favorite : "-favorite",
+				Locked : "-lock"
+			};
 
-			if (!this._oFlagIcon) {
+			this.setProperty("mark" + markerType, bMarked, false);
 
-				var oFlagIconUri = IconPool.getIconURI("flag");
-				this._oFlagIcon = IconPool.createControlByURI({
-					id: this.getId() + "-flag",
-					tooltip: oLibraryResourceBundle.getText("TOOLTIP_OLI_FLAG_MARK_VALUE"),
-					src: oFlagIconUri
-				});
+			if (!this.getShowMarkers()) {
+				bMarked = false;
 			}
-			return this._oFlagIcon;
+
+			for (var i = 0; i < aAllMarkers.length; i++) {
+				if (aAllMarkers[i].getType() === markerType) {
+					bHasMarker = true;
+					aAllMarkers[i].setVisible(bMarked);
+
+					break;
+				}
+			}
+
+			if (!bHasMarker) {
+				this.insertAggregation("markers", new ObjectMarker({
+					id: this.getId() + oIds[markerType],
+					type: markerType,
+					visible: bMarked
+				}));
+			}
+
+			return this;
 		};
+
 
 		/**
 		 * @private
-		 * @returns Lock icon control
-		 */
-		ObjectListItem.prototype._getLockIcon = function() {
-
-			if (!this._oLockIcon) {
-				var oLockIconUri = IconPool.getIconURI("locked");
-				this._oLockIcon = IconPool.createControlByURI({
-					id: this.getId() + "-lock",
-					tooltip: oLibraryResourceBundle.getText("TOOLTIP_OLI_LOCK_MARK_VALUE"),
-					src: oLockIconUri
-				}).addStyleClass("sapMObjStatusMarkerLocked");
-			}
-			return this._oLockIcon;
-		};
-
-		/**
-		 * @private
-		 * @returns Favorite icon control
-		 */
-		ObjectListItem.prototype._getFavoriteIcon = function() {
-
-			if (!this._oFavIcon) {
-
-				var oFavIconUri = IconPool.getIconURI("favorite");
-				this._oFavIcon = IconPool.createControlByURI({
-					id: this.getId() + "-favorite",
-					tooltip: oLibraryResourceBundle.getText("TOOLTIP_OLI_FAVORITE_MARK_VALUE"),
-					src: oFavIconUri
-				});
-			}
-			return this._oFavIcon;
-		};
-
-		/**
-		 * @private
-		 * @returns Title text control
+		 * @returns {sap.m.ObjectListItem} Title text control
 		 */
 		ObjectListItem.prototype._getTitleText = function() {
 
 			if (!this._oTitleText) {
-				this._oTitleText = new sap.m.Text(this.getId() + "-titleText", {
+				this._oTitleText = new Text(this.getId() + "-titleText", {
 					maxLines: 2
 				});
 
@@ -373,5 +637,4 @@ sap.ui.define(['jquery.sap.global', './ListItemBase', './library', 'sap/ui/core/
 		};
 
 		return ObjectListItem;
-
-	}, /* bExport= */ true);
+	});

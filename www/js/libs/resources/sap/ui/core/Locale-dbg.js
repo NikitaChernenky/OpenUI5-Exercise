@@ -1,12 +1,12 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 //Provides the locale object sap.ui.core.Locale
-sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
-	function(jQuery, BaseObject) {
+sap.ui.define(['sap/ui/base/Object', "sap/base/assert"],
+	function(BaseObject, assert) {
 	"use strict";
 
 
@@ -32,14 +32,13 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 		/**
 		 * Creates an instance of the Locale.
 		 *
-		 * @class Locale represents a locale setting, consisting of a language, script, region, variants, extensions and private use section
+		 * @class Locale represents a locale setting, consisting of a language, script, region, variants, extensions and private use section.
 		 *
 		 * @param {string} sLocaleId the locale identifier, in format en-US or en_US.
 		 *
 		 * @extends sap.ui.base.Object
 		 * @author SAP SE
-		 * @version 1.36.8
-		 * @constructor
+		 * @version 1.84.1
 		 * @public
 		 * @alias sap.ui.core.Locale
 		 */
@@ -48,11 +47,10 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 			constructor : function(sLocaleId) {
 				BaseObject.apply(this);
 				var aResult = rLocale.exec(sLocaleId.replace(/_/g, "-"));
-
 				// If the given Locale string cannot be parsed by the regular expression above we
 				// should at least tell the developer why the core fails to load.
-				if (aResult === null) {
-					throw "The given language does not adhere to BCP-47.";
+				if (aResult === null ) {
+					throw "The given language '" + sLocaleId + "' does not adhere to BCP-47.";
 				}
 
 				this.sLocaleId = sLocaleId;
@@ -91,7 +89,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 			},
 
 			/**
-			 * Get the locale script or null if none was specified.
+			 * Get the locale script or <code>null</code> if none was specified.
 			 *
 			 * Note that the case might differ from the original language tag
 			 * (Upper case first letter and lower case reminder enforced as
@@ -105,7 +103,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 			},
 
 			/**
-			 * Get the locale region or null if none was specified.
+			 * Get the locale region or <code>null</code> if none was specified.
 			 *
 			 * Note that the case might differ from the original script tag
 			 * (Upper case is enforced as recommended by BCP47/ISO3166-1).
@@ -118,7 +116,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 			},
 
 			/**
-			 * Get the locale variants as a single string or null.
+			 * Get the locale variants as a single string or <code>null</code>.
 			 *
 			 * Multiple variants are separated by a dash '-'.
 			 *
@@ -143,7 +141,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 			},
 
 			/**
-			 * Get the locale extension as a single string or null.
+			 * Get the locale extension as a single string or <code>null</code>.
 			 *
 			 * The extension always consists of a singleton character (not 'x'),
 			 * a dash '-' and one or more extension token, each separated
@@ -172,7 +170,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 			},
 
 			/**
-			 * Get the locale private use section or null.
+			 * Get the locale private use section or <code>null</code>.
 			 *
 			 * @return {string} the private use section
 			 * @public
@@ -182,9 +180,12 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 			},
 
 			/**
-			 * Get the locale private use section
+			 * Get the locale private use section as an array of tokens.
 			 *
-			 * @return {string} the private use section
+			 * The leading singleton and the separating dashes are not part of the result.
+			 * If there is no private use section in the locale tag, an empty array is returned.
+			 *
+			 * @return {string[]} the tokens of the private use section
 			 * @public
 			 */
 			getPrivateUseSubtags : function() {
@@ -192,8 +193,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 			},
 
 			hasPrivateUseSubtag : function(sSubtag) {
-				jQuery.sap.assert(sSubtag && sSubtag.match(/^[0-9A-Z]{1,8}$/i), "subtag must be a valid BCP47 private use tag");
-				return jQuery.inArray(sSubtag, this.getPrivateUseSubtags()) >= 0;
+				assert(sSubtag && sSubtag.match(/^[0-9A-Z]{1,8}$/i), "subtag must be a valid BCP47 private use tag");
+				return this.getPrivateUseSubtags().indexOf(sSubtag) >= 0;
 			},
 
 			toString : function() {
@@ -236,8 +237,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 			 * @return {string} a language code that should
 			 * @public
 			 * @since 1.17.0
+			 * @deprecated As of 1.44, use {@link sap.ui.core.Configuration#getSAPLogonLanguage} instead
+			 *   as that class allows to configure an SAP Logon language.
 			 */
 			getSAPLogonLanguage : function() {
+
 				var sLanguage = this.sLanguage || "",
 					m;
 
@@ -295,16 +299,16 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 		var A_RTL_LOCALES = getDesigntimePropertyAsArray("$cldr-rtl-locales:ar,fa,he$") || [];
 
 		/**
-		 * A list of locales for which CLDR data is bundled wit the UI5 runtime.
+		 * A list of locales for which CLDR data is bundled with the UI5 runtime.
 		 * @private
 		 */
-		Locale._cldrLocales = getDesigntimePropertyAsArray("$cldr-locales:ar,ar_EG,ar_SA,bg,br,ca,cs,da,de,de_AT,de_CH,el,el_CY,en,en_AU,en_GB,en_HK,en_IE,en_IN,en_NZ,en_PG,en_SG,en_ZA,es,es_AR,es_BO,es_CL,es_CO,es_MX,es_PE,es_UY,es_VE,et,fa,fi,fr,fr_BE,fr_CA,fr_CH,fr_LU,he,hi,hr,hu,id,it,it_CH,ja,ko,lt,lv,nb,nl,nl_BE,nn,pl,pt,pt_PT,ro,ru,ru_UA,sk,sl,sr,sv,th,tr,uk,vi,zh_CN,zh_HK,zh_SG,zh_TW$");
+		Locale._cldrLocales = getDesigntimePropertyAsArray("$cldr-locales:ar,ar_EG,ar_SA,bg,br,ca,cs,da,de,de_AT,de_CH,el,el_CY,en,en_AU,en_GB,en_HK,en_IE,en_IN,en_NZ,en_PG,en_SG,en_ZA,es,es_AR,es_BO,es_CL,es_CO,es_MX,es_PE,es_UY,es_VE,et,fa,fi,fr,fr_BE,fr_CA,fr_CH,fr_LU,he,hi,hr,hu,id,it,it_CH,ja,kk,ko,lt,lv,ms,nb,nl,nl_BE,nn,pl,pt,pt_PT,ro,ru,ru_UA,sk,sl,sr,sv,th,tr,uk,vi,zh_CN,zh_HK,zh_SG,zh_TW$");
 
 		/**
 		 * List of locales for which translated texts have been bundled with the UI5 runtime.
 		 * @private
 		 */
-		Locale._coreI18nLocales = getDesigntimePropertyAsArray("$core-i18n-locales:,ar,bg,ca,cs,da,de,el,en,es,et,fi,fr,hi,hr,hu,it,iw,ja,ko,lt,lv,nl,no,pl,pt,ro,ru,sh,sk,sl,sv,th,tr,uk,vi,zh_CN,zh_TW$");
+		Locale._coreI18nLocales = getDesigntimePropertyAsArray("$core-i18n-locales:,ar,bg,ca,cs,da,de,el,en,en_GB,es,es_MX,et,fi,fr,hi,hr,hu,it,iw,ja,kk,ko,lt,lv,ms,nl,no,pl,pt,ro,ru,sh,sk,sl,sv,th,tr,uk,vi,zh_CN,zh_TW$");
 
 		/**
 		 * Checks whether the given language tag implies a character orientation
@@ -317,20 +321,21 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object'],
 		 * There is no mean to define RTL=false for a language/region, when RTL=true for
 		 * the language alone.
 		 *
-		 * As of 3/2013 this is true for all supported locales/regions of UI5.
+		 * As of 3/2013 this is true for all locales/regions supported by UI5.
 		 *
+		 * @param {string|sap.ui.core.Locale} vLanguage Locale or language to check
 		 * @private
 		 */
-		Locale._impliesRTL = function(sLanguage) {
-			var oLocale = new Locale(sLanguage);
-			sLanguage = oLocale.getLanguage() || "";
+		Locale._impliesRTL = function(vLanguage) {
+			var oLocale = vLanguage instanceof Locale ? vLanguage : new Locale(vLanguage);
+			var sLanguage = oLocale.getLanguage() || "";
 			sLanguage = (sLanguage && M_ISO639_OLD_TO_NEW[sLanguage]) || sLanguage;
 			var sRegion = oLocale.getRegion() || "";
 
-			if ( sRegion && jQuery.inArray(sLanguage + "_" + sRegion, A_RTL_LOCALES) >= 0 ) {
+			if ( sRegion && A_RTL_LOCALES.indexOf(sLanguage + "_" + sRegion) >= 0 ) {
 				return true;
 			}
-			return jQuery.inArray(sLanguage, A_RTL_LOCALES) >= 0;
+			return A_RTL_LOCALES.indexOf(sLanguage) >= 0;
 		};
 
 	return Locale;

@@ -1,12 +1,12 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides class sap.ui.core.plugin.TemplatingSupport
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Core', 'sap/ui/core/tmpl/Template'],
-	function(jQuery, Core, Template) {
+sap.ui.define(['sap/ui/core/Core', 'sap/ui/core/tmpl/Template', "sap/base/Log"],
+	function(Core, Template, Log) {
 	"use strict";
 
 
@@ -18,7 +18,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Core', 'sap/ui/core/tmpl/Templa
 	 * @author Peter Muessig
 	 * @public
 	 * @since 1.15.0
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 * @alias sap.ui.core.plugin.TemplatingSupport
 	 */
 	var TemplatingSupport = function() {
@@ -33,18 +33,17 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Core', 'sap/ui/core/tmpl/Templa
 	 * @public
 	 */
 	TemplatingSupport.prototype.startPlugin = function(oCore, bOnInit) {
-		jQuery.sap.log.info("Starting TemplatingSupport plugin.");
+		Log.info("Starting TemplatingSupport plugin.");
 		this.oCore = oCore;
 		sap.ui.template();
 	};
 
 	/**
 	 * Will be invoked by <code>sap.ui.core.Core</code> to notify the plugin to start
-	 * @param {sap.ui.core.Core} oCore reference to the Core
 	 * @public
 	 */
 	TemplatingSupport.prototype.stopPlugin = function() {
-		jQuery.sap.log.info("Stopping TemplatingSupport plugin.");
+		Log.info("Stopping TemplatingSupport plugin.");
 		this.oCore = null;
 	};
 

@@ -1,12 +1,19 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.ui.core.tmpl.DOMElement.
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/library'],
-	function(jQuery, Control, library) {
+sap.ui.define([
+	'sap/ui/core/Control',
+	'sap/ui/core/library',
+	'./DOMAttribute',
+	"./DOMElementRenderer",
+	"sap/base/Log",
+	"sap/ui/thirdparty/jquery"
+],
+	function(Control, library, DOMAttribute, DOMElementRenderer, Log, jQuery) {
 	"use strict";
 
 
@@ -20,12 +27,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/library'
 	 * @class
 	 * Represents a DOM element. It allows to use databinding for the properties and nested DOM attributes.
 	 * @extends sap.ui.core.Control
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
-	 * @constructor
 	 * @public
-	 * @experimental Since version 1.15.
-	 * The templating might be changed in future versions.
+	 * @since 1.15
+	 * @deprecated since 1.56
 	 * @alias sap.ui.core.tmpl.DOMElement
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
 	 */
@@ -78,7 +84,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/library'
 				jQuery.each(mSettings, function(sKey, oValue) {
 					if (sKey !== "id" && !mJSONKeys[sKey] && typeof oValue === "string") {
 						// add custom settings as DOM attributes
-						aAttributes.push(new sap.ui.core.tmpl.DOMAttribute({
+						aAttributes.push(new DOMAttribute({
 							name: sKey,
 							value: oValue
 						}));
@@ -86,7 +92,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/library'
 					}
 				});
 			} else {
-				jQuery.sap.log.warning("DOMElement#" + this.getId() + ": custom attributes in settings will be ignored since attributes are provided!");
+				Log.warning("DOMElement#" + this.getId() + ": custom attributes in settings will be ignored since attributes are provided!");
 			}
 		}
 
@@ -125,7 +131,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/library'
 		var sTag = this.getTag().toLowerCase();
 		if (sTag === "input") {
 			var sValue = this.$().val();
-			jQuery.each(this.getAttributes(), function(iIndex, oAttribute) {
+			this.getAttributes().forEach(function(oAttribute) {
 				if (oAttribute.getName().toLowerCase() === "value") {
 					oAttribute.setValue(sValue);
 				}
@@ -162,7 +168,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/library'
 		// lookup the attribute (required for the setter and the getter)
 		var aAttributes = this.getAttributes(),
 			oAttribute;
-		jQuery.each(aAttributes, function(iIndex, oValue) {
+		aAttributes.forEach(function(oValue) {
 			var sName = oValue.getName();
 			if (sName.toLowerCase() === sKey) {
 				oAttribute = oValue;
@@ -189,7 +195,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/library'
 				// in case of a no attribute has been found we create and add
 				// a new DOM attribute for the given key and value
 				if (sValue !== null) {
-					this.addAttribute(new sap.ui.core.tmpl.DOMAttribute({
+					this.addAttribute(new DOMAttribute({
 						name: sKey,
 						value: sValue
 					}));
@@ -235,6 +241,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/library'
 				$this.text(this.getProperty("text"));
 			}
 		}
+		return this;
 	};
 
 

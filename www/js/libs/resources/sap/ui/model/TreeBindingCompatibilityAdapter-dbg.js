@@ -1,12 +1,12 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides class sap.ui.model.odata.TreeBindingAdapter
-sap.ui.define(['jquery.sap.global', 'sap/ui/model/TreeBinding', 'sap/ui/model/ClientTreeBinding', 'sap/ui/table/TreeAutoExpandMode', 'sap/ui/model/ChangeReason', 'sap/ui/model/TreeBindingUtils'],
-	function(jQuery, TreeBinding, ClientTreeBinding, TreeAutoExpandMode, ChangeReason, TreeBindingUtils) {
+sap.ui.define(["sap/base/util/each"],
+	function(each) {
 		"use strict";
 
 		/**
@@ -22,7 +22,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/TreeBinding', 'sap/ui/model/Cl
 		var TreeBindingCompatibilityAdapter = function (oBinding, oTable) {
 			// Code necessary for ClientTreeBinding
 			var that = oTable;
-			jQuery.extend(oBinding, {
+			Object.assign(oBinding, {
 				_init: function(bExpandFirstLevel) {
 					this._bExpandFirstLevel = bExpandFirstLevel;
 					// load the root contexts and create the context info map
@@ -54,7 +54,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/TreeBinding', 'sap/ui/model/Cl
 				_expandFirstLevel: function (bSkipFirstLevelLoad) {
 					var that = this;
 					if (this.aContexts && this.aContexts.length > 0) {
-						jQuery.each(this.aContexts.slice(), function(iIndex, oContext) {
+						each(this.aContexts.slice(), function(iIndex, oContext) {
 							if (!bSkipFirstLevelLoad) {
 								that._loadChildContexts(oContext);
 							}
@@ -80,7 +80,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/TreeBinding', 'sap/ui/model/Cl
 				_restoreContexts: function(aContexts) {
 					var that = this;
 					var aNewChildContexts = [];
-					jQuery.each(aContexts.slice(), function(iIndex, oContext) {
+					each(aContexts.slice(), function(iIndex, oContext) {
 						var oContextInfo = that._getContextInfo(oContext);
 						if (oContextInfo && oContextInfo.bExpanded) {
 							aNewChildContexts.push.apply(aNewChildContexts, that._loadChildContexts(oContext));
@@ -92,7 +92,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/TreeBinding', 'sap/ui/model/Cl
 				},
 				_loadChildContexts: function(oContext) {
 					var oContextInfo = this._getContextInfo(oContext);
-					var iIndex = jQuery.inArray(oContext, this.aContexts);
+					var iIndex = (this.aContexts ? this.aContexts.indexOf(oContext) : -1);
 					var aNodeContexts = this.getNodeContexts(oContext, 0, Number.MAX_VALUE);
 					for (var i = 0, l = aNodeContexts.length; i < l; i++) {
 						this.aContexts.splice(iIndex + i + 1, 0, aNodeContexts[i]);
@@ -119,6 +119,32 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/TreeBinding', 'sap/ui/model/Cl
 				},
 				getContexts: function(iStartIndex, iLength) {
 					return this.aContexts.slice(iStartIndex, iStartIndex + iLength);
+				},
+				getNodes: function(iStartIndex, iLength) {
+					var aContexts = this.getContexts(iStartIndex, iStartIndex + iLength);
+					//wrap contexts into node objects
+					var aNodes = [];
+					for (var i = 0; i < aContexts.length; i++) {
+						var oContextInfo = this._getContextInfo(aContexts[i]) || {}; //empty object to make sure this does not break
+						var oContext = aContexts[i];
+						aNodes.push({
+							context: oContext,
+							level: oContextInfo.iLevel,
+							parent: oContextInfo.oParentContext,
+							nodeState: {
+								expanded: oContextInfo.bExpanded,
+								collapsed: !oContextInfo.bExpanded,
+								selected: false //default should be false, correct value is given via the selection model
+							}
+						});
+					}
+					return aNodes;
+				},
+				hasChildren: function() {
+					return true;
+				},
+				nodeHasChildren: function() {
+					return true;
 				},
 				getContextByIndex: function (iRowIndex) {
 					return this.aContexts[iRowIndex];
@@ -195,7 +221,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/TreeBinding', 'sap/ui/model/Cl
 				storeSelection: function() {
 					var aSelectedIndices = that.getSelectedIndices();
 					var aSelectedContexts = [];
-					jQuery.each(aSelectedIndices, function(iIndex, iValue) {
+					each(aSelectedIndices, function(iIndex, iValue) {
 						aSelectedContexts.push(that.getContextByIndex(iValue));
 					});
 					this._aSelectedContexts = aSelectedContexts;
@@ -203,8 +229,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/TreeBinding', 'sap/ui/model/Cl
 				restoreSelection: function() {
 					that.clearSelection();
 					var _aSelectedContexts = this._aSelectedContexts;
-					jQuery.each(this.aContexts, function(iIndex, oContext) {
-						if (jQuery.inArray(oContext, _aSelectedContexts) >= 0) {
+					each(this.aContexts, function(iIndex, oContext) {
+						if (((_aSelectedContexts ? _aSelectedContexts.indexOf(oContext) : -1)) >= 0) {
 							that.addSelectionInterval(iIndex, iIndex);
 						}
 					});
@@ -214,6 +240,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/TreeBinding', 'sap/ui/model/Cl
 					// for compatibility reasons (OData Tree Binding)
 					return undefined;
 				},
+				detachSelectionChanged: function() {}, // for compatibility
 				clearSelection: function () {
 					that._oSelection.clearSelection();
 				},

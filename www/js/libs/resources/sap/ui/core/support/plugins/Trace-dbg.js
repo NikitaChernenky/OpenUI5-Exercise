@@ -1,26 +1,25 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides class sap.ui.core.support.plugins.Trace (Trace support plugin)
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
-	function(jQuery, Plugin) {
+sap.ui.define([
+	'sap/ui/core/support/Plugin',
+	'sap/ui/core/format/DateFormat',
+	"sap/base/Log",
+	"sap/base/security/encodeXML"
+],
+	function(Plugin, DateFormat, Log, encodeXML) {
 	"use strict";
-
-
-
-
 
 		/**
 		 * Creates an instance of sap.ui.core.support.plugins.Trace.
 		 * @class This class represents the trace plugin for the support tool functionality of UI5. This class is internal and all its functions must not be used by an application.
 		 *
-		 * @abstract
 		 * @extends sap.ui.core.support.Plugin
-		 * @version 1.36.8
-		 * @constructor
+		 * @version 1.84.1
 		 * @private
 		 * @alias sap.ui.core.support.plugins.Trace
 		 */
@@ -28,18 +27,17 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 			constructor : function(oSupportStub) {
 				Plugin.apply(this, ["sapUiSupportTrace", "JavaScript Trace", oSupportStub]);
 
-				this._aEventIds = this.isToolPlugin() ? [this.getId() + "Entry"] : [];
+				this._aEventIds = this.runsAsToolPlugin() ? [this.getId() + "Entry"] : [];
 
-				if (this.isToolPlugin()) {
+				if (this.runsAsToolPlugin()) {
 					this._aLogEntries = [];
-					this._iLogLevel = jQuery.sap.log.Level.ALL;
-					jQuery.sap.require("sap.ui.core.format.DateFormat");
-					this._oDateFormat = sap.ui.core.format.DateFormat.getDateTimeInstance();
+					this._iLogLevel = Log.Level.ALL;
+					this._oDateFormat = DateFormat.getDateTimeInstance();
 				} else {
 					var that = this;
-					this._oldLogLevel = jQuery.sap.log.getLevel();
-					jQuery.sap.log.setLevel(jQuery.sap.log.Level.ALL);
-					jQuery.sap.log.addLogListener({
+					this._oldLogLevel = Log.getLevel();
+					Log.setLevel(Log.Level.ALL);
+					Log.addLogListener({
 						onLogEntry: function(oLogEntry){
 							if (that.isActive()) {
 								oSupportStub.sendEvent(that.getId() + "Entry", {"entry": oLogEntry});
@@ -49,7 +47,6 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 				}
 			}
 		});
-
 
 		/**
 		 * Handler for sapUiSupportTraceEntry event
@@ -64,7 +61,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 
 		Trace.prototype.init = function(oSupportStub){
 			Plugin.prototype.init.apply(this, arguments);
-			if (!this.isToolPlugin()) {
+			if (!this.runsAsToolPlugin()) {
 				return;
 			}
 
@@ -72,9 +69,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 
 			var rm = sap.ui.getCore().createRenderManager();
 			rm.write("<div class='sapUiSupportToolbar'>");
-			rm.write("<button id='" + this.getId() + "-clear' class='sapUiSupportBtn'>Clear</button>");
-			rm.write("<label class='sapUiSupportLabel'>Filter:</label><input type='text' id='" + this.getId() + "-filter' class='sapUiSupportTxtFld'></input>");
-			rm.write("<label class='sapUiSupportLabel'>Log Level:</label><select id='" + this.getId() + "-loglevel' class='sapUiSupportTxtFld'>");
+			rm.write("<button id='" + this.getId() + "-clear' class='sapUiSupportRoundedButton'>Clear</button>");
+			rm.write("<label class='sapUiSupportLabel'>Filter:</label><input type='text' id='" + this.getId() + "-filter' class='sapUiSupportTxtFld'>");
+			rm.write("<label class='sapUiSupportLabel'>Log Level:</label><select id='" + this.getId() + "-loglevel' class='sapUiSupportTxtFld sapUiSupportSelect'>");
 			rm.write("<option value='0'>FATAL</option>");
 			rm.write("<option value='1'>ERROR</option>");
 			rm.write("<option value='2'>WARNING</option>");
@@ -114,28 +111,28 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 				log(that, aResult.join(""));
 			};
 
-			this.$("clear").bind("click", this._fClearHandler);
-			this.$("filter").bind("change", this._fFilterHandler);
-			this.$("loglevel").bind("change", this._fLogLevelHandler);
+			this.$("clear").on("click", this._fClearHandler);
+			this.$("filter").on("change", this._fFilterHandler);
+			this.$("loglevel").on("change", this._fLogLevelHandler);
 		};
 
 
 		Trace.prototype.exit = function(oSupportStub){
-			if (this.isToolPlugin()) {
+			if (this.runsAsToolPlugin()) {
 				if (this._fClearHandler) {
-					this.$("clear").unbind("click", this._fClearHandler);
+					this.$("clear").off("click", this._fClearHandler);
 					this._fClearHandler = null;
 				}
 				if (this._fFilterHandler) {
-					this.$("filter").unbind("change", this._fFilterHandler);
+					this.$("filter").off("change", this._fFilterHandler);
 					this._fFilterHandler = null;
 				}
 				if (this._fLogLevelHandler) {
-					this.$("loglevel").unbind("change", this._fLogLevelHandler);
+					this.$("loglevel").off("change", this._fLogLevelHandler);
 					this._fLogLevelHandler = null;
 				}
 			} else {
-				jQuery.sap.log.setLevel(this._oldLogLevel);
+				Log.setLevel(this._oldLogLevel);
 				this._oldLogLevel = null;
 			}
 			Plugin.prototype.exit.apply(this, arguments);
@@ -148,7 +145,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 				jContentRef.html("");
 				oPlugin._aLogEntries = [];
 			} else if (typeof (oEntry) === "string") {
-				jContentRef.html(oEntry);
+				jContentRef.html(encodeXML(oEntry));
 				jContentRef[0].scrollTop = jContentRef[0].scrollHeight;
 			} else {
 				oEntry._levelInfo = getLevel(oEntry.level);
@@ -166,7 +163,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 			var sStyle = " style='color:" + aLevelInfo[1] + ";'";
 			var sResult = "<div class='sapUiSupportTraceEntry'><span class='sapUiSupportTraceEntryLevel'" + sStyle + ">" + aLevelInfo[0] +
 					"</span><span class='sapUiSupportTraceEntryTime'" + sStyle + ">" + oPlugin._oDateFormat.format(new Date(oEntry.timestamp)) +
-					"</span><span class='sapUiSupportTraceEntryMessage'>" + jQuery.sap.escapeHTML(oEntry.message || "") + "</div>";
+					"</span><span class='sapUiSupportTraceEntryMessage'>" + encodeXML(oEntry.message || "") + "</div>";
 			return sResult;
 		}
 
@@ -190,17 +187,17 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 
 		function getLevel(iLogLevel){
 			switch (iLogLevel) {
-				case jQuery.sap.log.Level.FATAL:
+				case Log.Level.FATAL:
 					return ["FATAL", "#E60000", iLogLevel];
-				case jQuery.sap.log.Level.ERROR:
+				case Log.Level.ERROR:
 					return ["ERROR", "#E60000", iLogLevel];
-				case jQuery.sap.log.Level.WARNING:
+				case Log.Level.WARNING:
 					return ["WARNING", "#FFAA00", iLogLevel];
-				case jQuery.sap.log.Level.INFO:
+				case Log.Level.INFO:
 					return ["INFO", "#000000", iLogLevel];
-				case jQuery.sap.log.Level.DEBUG:
+				case Log.Level.DEBUG:
 					return ["DEBUG", "#000000", iLogLevel];
-				case jQuery.sap.log.Level.TRACE:
+				case Log.Level.TRACE:
 					return ["TRACE", "#000000", iLogLevel];
 			}
 			return ["unknown", "#000000", iLogLevel];

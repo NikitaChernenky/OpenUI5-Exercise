@@ -1,12 +1,16 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', './ListItemBaseRenderer', 'sap/ui/core/Renderer'],
-	function(jQuery, ListItemBaseRenderer, Renderer) {
+sap.ui.define(["sap/ui/core/library", "sap/ui/core/Renderer", "./ListItemBaseRenderer"],
+	function(coreLibrary, Renderer, ListItemBaseRenderer) {
 	"use strict";
+
+
+	// shortcut for sap.ui.core.TextDirection
+	var TextDirection = coreLibrary.TextDirection;
 
 
 	/**
@@ -14,6 +18,7 @@ sap.ui.define(['jquery.sap.global', './ListItemBaseRenderer', 'sap/ui/core/Rende
 	 * @namespace
 	 */
 	var InputListItemRenderer = Renderer.extend(ListItemBaseRenderer);
+	InputListItemRenderer.apiVersion = 2;
 
 	/**
 	 * Renders the HTML for the given control, using the provided
@@ -27,45 +32,36 @@ sap.ui.define(['jquery.sap.global', './ListItemBaseRenderer', 'sap/ui/core/Rende
 	 *          rendered
 	 */
 	InputListItemRenderer.renderLIAttributes = function(rm, oLI) {
-		rm.addClass("sapMILI");
+		rm.class("sapMILI");
 	};
 
 	InputListItemRenderer.renderLIContent = function(rm, oLI) {
 
-		var sLabel = oLI.getLabel();
-
 		// List item label
+		var sLabel = oLI.getLabel();
+		var sInnerLabel = oLI.getId() + "-label";
 		if (sLabel) {
-			var sLabelId = oLI.getId() + "-label",
-				sLabelDir = oLI.getLabelTextDirection();
+			rm.openStart("span", sInnerLabel);
+			rm.class("sapMILILabel");
 
-			rm.write('<label id="' + sLabelId + '" class="sapMILILabel"');
-
-			if (sLabelDir !== sap.ui.core.TextDirection.Inherit) {
-				rm.writeAttribute("dir", sLabelDir.toLowerCase());
+			var sLabelDir = oLI.getLabelTextDirection();
+			if (sLabelDir !== TextDirection.Inherit) {
+				rm.attr("dir", sLabelDir.toLowerCase());
 			}
 
-			rm.write('>');
-			rm.writeEscaped(sLabel);
-			rm.write('</label>');
+			rm.openEnd();
+			rm.text(sLabel);
+			rm.close("span");
 		}
 
-		// List item input content
-		rm.write('<div class="sapMILIDiv sapMILI-CTX">');
-
-		oLI.getContent().forEach(function(oContent) {
-
-			// if not already exists add the label as an labelledby association whenever possible
-			if (sLabelId &&
-				oContent.addAriaLabelledBy &&
-				oContent.getAriaLabelledBy().indexOf(sLabelId) == -1) {
-				oContent.addAriaLabelledBy(sLabelId);
+		rm.openStart("div").class("sapMILIDiv").class("sapMILI-CTX").openEnd();
+		oLI.getContent().forEach(function(oControl) {
+			if (oControl.addAriaLabelledBy && oControl.getAriaLabelledBy().indexOf(sInnerLabel) === -1) {
+				oControl.addAriaLabelledBy(sInnerLabel);
 			}
-
-			rm.renderControl(oContent);
+			rm.renderControl(oControl);
 		});
-
-		rm.write('</div>');
+		rm.close("div");
 	};
 
 

@@ -1,11 +1,11 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control'],
-	function(jQuery, library, Control) {
+sap.ui.define(['./library', 'sap/ui/core/Control', './TileContentRenderer'],
+	function(library, Control, TileContentRenderer) {
 	"use strict";
 
 	/**
@@ -18,8 +18,8 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control'],
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
-	 * @since 1.34
+	 * @version 1.84.1
+	 * @since 1.34.0
 	 *
 	 * @public
 	 * @alias sap.m.TileContent
@@ -34,42 +34,47 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control'],
 				 */
 				"footer" : {type : "string", group : "Appearance", defaultValue : null},
 				/**
-				 * Updates the size of the tile. If it is not set, then the default size is applied based on the device tile.
+				 * The semantic color of the footer.
+				 * @since 1.44
 				 */
-				"size" : {type : "sap.m.Size", group : "Misc", defaultValue : "Auto"},
+				"footerColor" : {type : "sap.m.ValueColor", group : "Appearance", defaultValue : "Neutral"},
+				/**
+				 * Updates the size of the tile. If it is not set, then the default size is applied based on the device tile.
+				 * @deprecated Since version 1.38.0. The TileContent control has now a fixed size, depending on the used media (desktop, tablet or phone).
+				 */
+				"size" : {type : "sap.m.Size", group : "Appearance", defaultValue : "Auto"},
 				/**
 				 * The percent sign, the currency symbol, or the unit of measure.
 				 */
-				"unit" : {type : "string", group : "Misc", defaultValue : null},
+				"unit" : {type : "string", group : "Data", defaultValue : null},
 				/**
 				 * Disables control if true.
-				 *
-				 * @since 1.23
 				 */
-				"disabled" : {type : "boolean", group : "Misc", defaultValue : false},
+				"disabled" : {type : "boolean", group : "Behavior", defaultValue : false},
 				/**
-				 * The frame type: 1x1 or 2x1.
-				 *
-				 * @since 1.25
+				 * Frame types: 1x1, 2x1, and auto.
 				 */
-				"frameType" : {type : "sap.m.FrameType", group : "Appearance", defaultValue : sap.m.FrameType.Auto}
+				"frameType" : {type : "sap.m.FrameType", group : "Appearance", defaultValue : "Auto"}
 			},
+			defaultAggregation : "content",
 			aggregations : {
 				/**
 				 * The switchable view that depends on the tile type.
 				 */
-				"content" : {type : "sap.ui.core.Control", multiple : false}
+				"content" : {type : "sap.ui.core.Control", multiple : false, bindable : "bindable"}
 			}
 		}
 	});
 
 	/* --- Lifecycle methods --- */
 
-	/**
-	 * Handler for before rendering
-	 */
+	TileContent.prototype.init = function() {
+		this._bRenderFooter = true;
+		this._bRenderContent = true;
+	};
+
 	TileContent.prototype.onBeforeRendering = function() {
-		if (this.getContent()) {
+		if (this.getContent() && this._oDelegate) {
 			if (this.getDisabled()) {
 				this.getContent().addDelegate(this._oDelegate);
 			} else {
@@ -144,7 +149,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control'],
 	 *
 	 * @returns {String} The AltText text
 	 */
-	sap.m.TileContent.prototype.getAltText = function() {
+	TileContent.prototype.getAltText = function() {
 		var sAltText = "";
 		var bIsFirst = true;
 		var oContent = this.getContent();
@@ -169,7 +174,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control'],
 		return sAltText;
 	};
 
-	TileContent.prototype.getTooltip_AsString = function() {
+	TileContent.prototype.getTooltip_AsString = function() { //eslint-disable-line
 		var sTooltip = this.getTooltip();
 		var sAltText = "";
 		if (typeof sTooltip === "string" || sTooltip instanceof String) {
@@ -179,5 +184,27 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control'],
 		return sAltText ? sAltText : "";
 	};
 
+	/**
+	 * Setter for protected property to enable or disable footer rendering. This function does not invalidate the control.
+	 * @param {boolean} value Determines whether the control's footer is rendered or not
+	 * @returns {sap.m.TileContent} this to allow method chaining
+	 * @protected
+	 */
+	TileContent.prototype.setRenderFooter = function(value) {
+		this._bRenderFooter = value;
+		return this;
+	};
+
+	/**
+	 * Setter for protected property to enable or disable content rendering. This function does not invalidate the control.
+	 * @param {boolean} value Determines whether the control's content is rendered or not
+	 * @returns {sap.m.TileContent} this To allow method chaining
+	 * @protected
+	 */
+	TileContent.prototype.setRenderContent = function(value) {
+		this._bRenderContent = value;
+		return this;
+	};
+
 	return TileContent;
-}, /* bExport= */true);
+});

@@ -1,12 +1,28 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides the base implementation for all model implementations
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/format/NumberFormat', 'sap/ui/model/SimpleType', 'sap/ui/model/FormatException', 'sap/ui/model/ParseException', 'sap/ui/model/ValidateException'],
-	function(jQuery, NumberFormat, SimpleType, FormatException, ParseException, ValidateException) {
+sap.ui.define([
+	'sap/ui/core/format/NumberFormat',
+	'sap/ui/model/SimpleType',
+	'sap/ui/model/FormatException',
+	'sap/ui/model/ParseException',
+	'sap/ui/model/ValidateException',
+	"sap/ui/thirdparty/jquery",
+	"sap/base/util/isEmptyObject"
+],
+	function(
+		NumberFormat,
+		SimpleType,
+		FormatException,
+		ParseException,
+		ValidateException,
+		jQuery,
+		isEmptyObject
+	) {
 	"use strict";
 
 
@@ -19,16 +35,15 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/format/NumberFormat', 'sap/ui/m
 	 * @extends sap.ui.model.SimpleType
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
-	 * @constructor
 	 * @public
-	 * @param {object} [oFormatOptions] formatting options. Supports the same options as {@link sap.ui.core.format.NumberFormat.getFloatInstance NumberFormat.getFloatInstance}
-	 * @param {object} [oFormatOptions.source] additional set of format options to be used if the property in the model is not of type string and needs formatting as well.
-	 * 										   In case an empty object is given, the default is disabled grouping and a dot as decimal separator.
-	 * @param {object} [oConstraints] value constraints.
-	 * @param {float} [oConstraints.minimum] smallest value allowed for this type
-	 * @param {float} [oConstraints.maximum] largest value allowed for this type
+	 * @param {object} [oFormatOptions] Formatting options. For a list of all available options, see {@link sap.ui.core.format.NumberFormat#constructor NumberFormat}.
+	 * @param {object} [oFormatOptions.source] Additional set of format options to be used if the property in the model is not of type string and needs formatting as well.
+	 * 										   If an empty object is given, the grouping is disabled and a dot is used as decimal separator.
+	 * @param {object} [oConstraints] Value constraints
+	 * @param {float} [oConstraints.minimum] Smallest value allowed for this type
+	 * @param {float} [oConstraints.maximum] Largest value allowed for this type
 	 * @alias sap.ui.model.type.Float
 	 */
 	var Float = SimpleType.extend("sap.ui.model.type.Float", /** @lends sap.ui.model.type.Float.prototype  */ {
@@ -40,9 +55,6 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/format/NumberFormat', 'sap/ui/m
 
 	});
 
-	/**
-	 * @see sap.ui.model.SimpleType.prototype.formatValue
-	 */
 	Float.prototype.formatValue = function(vValue, sInternalType) {
 		var fValue = vValue;
 		if (vValue == undefined || vValue == null) {
@@ -67,9 +79,6 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/format/NumberFormat', 'sap/ui/m
 		}
 	};
 
-	/**
-	 * @see sap.ui.model.SimpleType.prototype.parseValue
-	 */
 	Float.prototype.parseValue = function(vValue, sInternalType) {
 		var fResult, oBundle;
 		switch (this.getPrimitiveType(sInternalType)) {
@@ -93,15 +102,13 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/format/NumberFormat', 'sap/ui/m
 		return fResult;
 	};
 
-	/**
-	 * @see sap.ui.model.SimpleType.prototype.validateValue
-	 */
 	Float.prototype.validateValue = function(vValue) {
 		if (this.oConstraints) {
 			var oBundle = sap.ui.getCore().getLibraryResourceBundle(),
 				aViolatedConstraints = [],
 				aMessages = [],
-				fValue = vValue;
+				fValue = vValue,
+				that = this;
 			if (this.oInputFormat) {
 				fValue = this.oInputFormat.parse(vValue);
 			}
@@ -110,25 +117,24 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/format/NumberFormat', 'sap/ui/m
 					case "minimum":
 						if (fValue < oContent) {
 							aViolatedConstraints.push("minimum");
-							aMessages.push(oBundle.getText("Float.Minimum", [oContent]));
+							aMessages.push(oBundle.getText("Float.Minimum",
+								[that.oOutputFormat.format(oContent)]));
 						}
 						break;
 					case "maximum":
 						if (fValue > oContent) {
 							aViolatedConstraints.push("maximum");
-							aMessages.push(oBundle.getText("Float.Maximum", [oContent]));
+							aMessages.push(oBundle.getText("Float.Maximum",
+								[that.oOutputFormat.format(oContent)]));
 						}
 				}
 			});
 			if (aViolatedConstraints.length > 0) {
-				throw new ValidateException(aMessages.join(" "), aViolatedConstraints);
+				throw new ValidateException(this.combineMessages(aMessages), aViolatedConstraints);
 			}
 		}
 	};
 
-	/**
-	 * @see sap.ui.model.SimpleType.prototype.setFormatOptions
-	 */
 	Float.prototype.setFormatOptions = function(oFormatOptions) {
 		this.oFormatOptions = oFormatOptions;
 		this._createFormats();
@@ -150,7 +156,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/format/NumberFormat', 'sap/ui/m
 		var oSourceOptions = this.oFormatOptions.source;
 		this.oOutputFormat = NumberFormat.getFloatInstance(this.oFormatOptions);
 		if (oSourceOptions) {
-			if (jQuery.isEmptyObject(oSourceOptions)) {
+			if (isEmptyObject(oSourceOptions)) {
 				oSourceOptions = {
 					groupingEnabled: false,
 					groupingSeparator: ",",

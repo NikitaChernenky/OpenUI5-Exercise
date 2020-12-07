@@ -1,12 +1,38 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides class sap.ui.core.DeclarativeSupport
-sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/ManagedObject', './Control', './CustomData', './HTML', './mvc/View'],
-	function(jQuery, DataType, ManagedObject, Control, CustomData, HTML, View) {
+sap.ui.define([
+	'sap/ui/thirdparty/jquery',
+	'sap/ui/base/DataType',
+	'sap/ui/base/ManagedObject',
+	'./Control',
+	'./CustomData',
+	'./HTML',
+	'./mvc/View',
+	'./mvc/EventHandlerResolver',
+	'sap/base/Log',
+	'sap/base/util/ObjectPath',
+	'sap/base/assert',
+	'sap/base/strings/camelize'
+],
+	function(
+		jQuery,
+		DataType,
+		ManagedObject,
+		Control,
+		CustomData,
+		HTML,
+		View,
+		EventHandlerResolver,
+		Log,
+		ObjectPath,
+		assert,
+		camelize
+	) {
 	"use strict";
 
 
@@ -14,7 +40,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/Managed
 	 * @class Static class for enabling declarative UI support.
 	 *
 	 * @author Peter Muessig, Tino Butz
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 * @since 1.7.0
 	 * @public
 	 * @alias sap.ui.core.DeclarativeSupport
@@ -51,7 +77,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/Managed
 		"tooltip" : function(sValue, mSettings, fnClass) {
 			// TODO: Remove this key / value when deprecation is removed
 			mSettings["tooltip"] = sValue;
-			jQuery.sap.log.warning('[Deprecated] Control "' + mSettings.id + '": The attribute "tooltip" is not prefixed with "data-*". Future version of declarative support will only suppport attributes with "data-*" prefix.');
+			Log.warning('[Deprecated] Control "' + mSettings.id + '": The attribute "tooltip" is not prefixed with "data-*". Future version of declarative support will only suppport attributes with "data-*" prefix.');
 		},
 		"class":true,
 		"style" : true,
@@ -130,7 +156,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/Managed
 		}
 
 		// add the controls
-		jQuery.each(aControls, function(vKey, oControl) {
+		aControls.forEach(function(oControl) {
 			if (oControl instanceof Control) {
 				if (oView && !isRecursive) {
 					oView.addContent(oControl);
@@ -161,20 +187,23 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/Managed
 
 		var sType = $element.attr("data-sap-ui-type");
 		if (sType) {
-			jQuery.sap.require(sType); // make sure fnClass.getMatadata() is available
-			var fnClass = jQuery.sap.getObject(sType);
-			jQuery.sap.assert(typeof fnClass !== "undefined", "Class not found: " + sType);
+			var fnClass = sap.ui.requireSync(sType.replace(/\./g, "/")); // make sure fnClass.getMatadata() is available
+			fnClass = fnClass || ObjectPath.get(sType);
+			assert(typeof fnClass !== "undefined", "Class not found: " + sType);
 
 
 			var mSettings = {};
 			mSettings.id = this._getId($element, oView);
+			if ( oView && oView._sProcessingMode != null && fnClass.getMetadata().hasSpecialSetting("processingMode") ) {
+				mSettings.processingMode = oView._sProcessingMode;
+			}
 			this._addSettingsForAttributes(mSettings, fnClass, oElement, oView);
 			this._addSettingsForAggregations(mSettings, fnClass, oElement, oView);
 
 			var oControl;
 			if (View.prototype.isPrototypeOf(fnClass.prototype) && typeof fnClass._sType === "string") {
 				// for views having a factory function defined we use the factory function!
-				oControl = sap.ui.view(mSettings, undefined, fnClass._sType);
+				oControl = View._legacyCreate(mSettings, undefined, fnClass._sType);
 			} else {
 				oControl = new fnClass(mSettings);
 			}
@@ -195,7 +224,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/Managed
 
 
 	/**
-	 * Parses a given DOM ref and converts it into a HTMLControl.
+	 * Parses a given DOM ref and converts it into an HTMLControl.
 	 * @param {Element} oElement reference to a DOM element
 	 * @param {sap.ui.core.mvc.HTMLView} [oView] The view instance to use.
 	 * @return {sap.ui.core.HTML} reference to a Control
@@ -252,11 +281,10 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/Managed
 						if (oAssociation.multiple) {
 							// we support "," and " " to split between IDs
 							sValue = sValue.replace(/\s*,\s*|\s+/g, ","); // normalize strings: "id1  ,    id2    id3" to "id1,id2,id3"
-							var aId = sValue.split(","); // split array for all ","
-							jQuery.each(aId, function(iIndex, sId) {
-								aId[iIndex] = oView ? oView.createId(sId) : sId;
+							// split array for all ","
+							mSettings[sName] = sValue.split(",").map(function(sId) {
+								return oView ? oView.createId(sId) : sId;
 							});
-							mSettings[sName] = aId;
 						} else {
 							mSettings[sName] = oView ? oView.createId(sValue) : sValue; // use the value as ID
 						}
@@ -281,14 +309,14 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/Managed
 						}
 					} else if (that._getEvent(fnClass, sName)) {
 						var oController = oView && (oView._oContainingView || oView).getController();
-						var vHandler = View._resolveEventHandler(sValue, oController);
+						var vHandler = EventHandlerResolver.resolveEventHandler(sValue, oController);
 						if ( vHandler ) {
 							mSettings[sName] = vHandler;
 						} else {
 							throw new Error('Control "' + mSettings.id + '": The function "' + sValue + '" for the event "' + sName + '" is not defined');
 						}
 					} else {
-						jQuery.sap.assert((sName === "id"), "DeclarativeSupport encountered unknown setting '" + sName + "' for class '" + fnClass.getMetadata().getName() + "' (value:'" + sValue + "')");
+						assert((sName === "id"), "DeclarativeSupport encountered unknown setting '" + sName + "' for class '" + fnClass.getMetadata().getName() + "' (value:'" + sValue + "')");
 					}
 				} else if (typeof oSpecialAttributes[sName] === "function") {
 					oSpecialAttributes[sName](sValue, mSettings, fnClass);
@@ -299,7 +327,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/Managed
 				// custom data handling:
 
 				// determine the key of the custom data entry
-				sName = jQuery.sap.camelCase(reCustomData.exec(sName)[1]);
+				sName = camelize(reCustomData.exec(sName)[1]);
 
 				// create a binding info object if necessary
 				var oBindingInfo = fnBindingParser(sValue, oView && oView.getController());
@@ -341,8 +369,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/Managed
 		var oAggregations = fnClass.getMetadata().getAllAggregations();
 
 		$element.children().each(function() {
-			// check for an aggregation tag of in case of a sepcifiying the
-			// aggregration on the parent control this will be used in case
+			// check for an aggregation tag of in case of a specifying the
+			// aggregation on the parent control this will be used in case
 			// of no meta tag was found
 			var $child = jQuery(this);
 			var sAggregation = $child.attr("data-sap-ui-aggregation");
@@ -367,7 +395,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/Managed
 								mSettings[sAggregation] = [];
 							}
 							if ( typeof mSettings[sAggregation].path === "string" ) {
-								jQuery.sap.assert(!mSettings[sAggregation].template, "list bindings support only a single template object");
+								assert(!mSettings[sAggregation].template, "list bindings support only a single template object");
 								mSettings[sAggregation].template = oControl;
 							} else {
 								mSettings[sAggregation].push(oControl);
@@ -485,11 +513,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType', 'sap/ui/base/Managed
 		if (sAttribute.indexOf("data-") === 0) {
 			sAttribute = sAttribute.substr(5);
 		} else if (bDeprecationWarning) {
-			jQuery.sap.log.warning('[Deprecated] Control "' + sId + '": The attribute "' + sAttribute + '" is not prefixed with "data-*". Future version of declarative support will only suppport attributes with "data-*" prefix.');
+			Log.warning('[Deprecated] Control "' + sId + '": The attribute "' + sAttribute + '" is not prefixed with "data-*". Future version of declarative support will only suppport attributes with "data-*" prefix.');
 		} else {
 			throw new Error('Control "' + sId + '": The attribute "' + sAttribute + '" is not prefixed with "data-*".');
 		}
-		return jQuery.sap.camelCase(sAttribute);
+		return camelize(sAttribute);
 	};
 
 

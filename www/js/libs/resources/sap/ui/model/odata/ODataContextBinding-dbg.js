@@ -1,12 +1,12 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 //Provides an abstraction for list bindings
-sap.ui.define(['sap/ui/model/ContextBinding'],
-		function(ContextBinding) {
+sap.ui.define(['sap/ui/model/ContextBinding', 'sap/ui/model/ChangeReason'],
+		function(ContextBinding, ChangeReason) {
 	"use strict";
 
 
@@ -17,11 +17,12 @@ sap.ui.define(['sap/ui/model/ContextBinding'],
 	 * The ContextBinding is a specific binding for a setting context for the model
 	 *
 	 * @param {sap.ui.model.Model} oModel
-	 * @param {String} sPath
-	 * @param {Object} oContext
-	 * @param {Object} [mParameters]
+	 * @param {string} sPath
+	 * @param {sap.ui.model.Context} oContext
+	 * @param {object} [mParameters]
 	 * @abstract
 	 * @public
+	 * @deprecated As of version 1.66, please use {@link sap.ui.model.odata.v2.ODataContextBinding} instead.
 	 * @alias sap.ui.model.odata.ODataContextBinding
 	 * @extends sap.ui.model.ContextBinding
 	 */
@@ -51,7 +52,7 @@ sap.ui.define(['sap/ui/model/ContextBinding'],
 			}
 			this.oModel.createBindingContext(this.sPath, this.oContext, this.mParameters, function(oContext) {
 				that.oElementContext = oContext;
-				that._fireChange();
+				that._fireChange({ reason: ChangeReason.Context });
 				if (sResolvedPath && bReloadNeeded) {
 					that.fireDataReceived();
 				}
@@ -91,11 +92,11 @@ sap.ui.define(['sap/ui/model/ContextBinding'],
 			this.oModel.createBindingContext(this.sPath, this.oContext, this.mParameters, function(oContext) {
 				if (that.oElementContext === oContext) {
 					if (bForceUpdate) {
-						that._fireChange();
+						that._fireChange({ reason: ChangeReason.Context });
 					}
 				} else {
 					that.oElementContext = oContext;
-					that._fireChange();
+					that._fireChange({ reason: ChangeReason.Context });
 				}
 				if (sResolvedPath) {
 					that.fireDataReceived();
@@ -127,7 +128,7 @@ sap.ui.define(['sap/ui/model/ContextBinding'],
 			}
 			this.oModel.createBindingContext(this.sPath, this.oContext, this.mParameters, function(oContext) {
 				that.oElementContext = oContext;
-				that._fireChange();
+				that._fireChange({ reason: ChangeReason.Context });
 				if (sResolvedPath && bReloadNeeded) {
 					that.fireDataReceived();
 				}

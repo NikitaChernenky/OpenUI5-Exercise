@@ -1,12 +1,12 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides default renderer for control sap.ui.commons.Togglebutton
-sap.ui.define(['jquery.sap.global', './ButtonRenderer', 'sap/ui/core/Renderer'],
-	function(jQuery, ButtonRenderer, Renderer) {
+sap.ui.define(['./ButtonRenderer', 'sap/ui/core/Renderer'],
+	function(ButtonRenderer, Renderer) {
 	"use strict";
 
 
@@ -16,6 +16,8 @@ sap.ui.define(['jquery.sap.global', './ButtonRenderer', 'sap/ui/core/Renderer'],
 	 */
 
 	var ToggleButtonRenderer = Renderer.extend(ButtonRenderer);
+
+	ToggleButtonRenderer.apiVersion = 2;
 
 	/**
 	 * Callback for specific rendering of accessibility attributes.
@@ -44,7 +46,7 @@ sap.ui.define(['jquery.sap.global', './ButtonRenderer', 'sap/ui/core/Renderer'],
 	 */
 	ToggleButtonRenderer.renderButtonAttributes = function(oRm, oToggleButton) {
 		if (oToggleButton.getPressed() && !oToggleButton._isUnstyled()) {
-			oRm.addClass("sapMToggleBtnPressed");
+			oRm.class("sapMToggleBtnPressed");
 		}
 	};
 

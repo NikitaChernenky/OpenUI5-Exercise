@@ -1,27 +1,72 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.TabContainer.
-sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/core/IconPool'],
-	function(jQuery, library, Control, IconPool) {
+sap.ui.define([
+	'./library',
+	'sap/ui/core/Control',
+	'sap/ui/core/IconPool',
+	'sap/ui/core/util/ResponsivePaddingsEnablement',
+	'./TabContainerRenderer',
+	'./TabStrip',
+	'./TabStripItem',
+	'./Button',
+	'sap/ui/Device'
+],
+	function(library, Control, IconPool, ResponsivePaddingsEnablement, TabContainerRenderer, TabStrip, TabStripItem, Button, Device) {
 		"use strict";
 
+		// shortcut for sap.m.ButtonType
+		var ButtonType = library.ButtonType;
+
+		// shortcut for PageBackgroundDesign in sap.m library
+		var PageBackgroundDesign = library.PageBackgroundDesign;
+
 		/**
-		 * Constructor for a new TabContainer.
+		 * Constructor for a new <code>TabContainer</code>.
 		 *
 		 * @param {string} [sId] ID for the new control, generated automatically if no ID is given
 		 * @param {object} [mSettings] Initial settings for the new control
 		 *
 		 * @class
-		 * The TabContainer control represents a collection of tabs with associated content.
+		 * A container control for managing multiple tabs, allowing the user to open and edit different items simultaneously.
+		 *
+		 * <h3>Overview</h3>
+		 *
+		 * The control contains a <code>TabStrip</code> area where the user can choose which tab to view/edit.
+		 * When the open tabs are more than what can be displayed on the screen, there is an overflow mechanism.
+		 * To access the tabs hidden in the overflow area, the user has to either use the overflow button (left or right arrow)
+		 * to scroll them horizontally or the overflow overview button (down arrow) and view all open items as a list.
+		 *
+		 * Each tab has a title and a <i>Close Tab</i> button. The title is truncated, if it's longer than 25 characters.
+		 * On desktop, the <i>Close Tab</i> button is displayed on the currently active tab and for the other tabs it appears on mouse hover.
+		 * On mobile devices, the <i>Close Tab</i> buttons are always visible.
+		 *
+		 * To show that the open items have unsaved changes, the corresponding tabs can display an asterisk (*) after the title
+		 * as a visual indication that the item is not saved. This is managed by the app developer using
+		 * {@link sap.m.TabContainerItem TabContainerItem}'s <code>modified</code> property.
+		 *
+		 * <h3>Usage</h3>
+		 *
+		 * The <code>TabContainer</code> can have an <i>Add New Tab</i> button, which appears as a '+' icon on the
+		 * top-right area of the control. When the user clicks or taps this button, the <code>addNewButtonPress</code> event is fired.
+		 *
+		 * <h3>Responsive behavior</h3>
+		 *
+		 * The <code>TabContainer</code> is a full-page container that takes 100% of its parent width and height.
+		 * As the control is expected to occupy the whole parent, it should be the only child of its parent.
+		 *
+		 * When using the <code>sap.m.TabContainer</code> in SAP Quartz theme, the breakpoints and layout paddings could be determined by the container's width.
+		 * To enable this concept and add responsive padding to the <code>TabContainer</code> control, you may add the following class:
+		 * <code>sapUiResponsivePadding--header</code>.
 		 *
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.36.8
+		 * @version 1.84.1
 		 *
 		 * @constructor
 		 * @public
@@ -35,9 +80,16 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 				properties : {
 
 					/**
-					 * Defines whether an <code>Add New Tab</code> button is displayed in the TabStrip.
+					 * Defines whether an <i>Add New Tab</i> button is displayed in the <code>TabStrip</code>.
 					 */
-					showAddNewButton : {type : "boolean", group : "Misc", defaultValue : false}
+					showAddNewButton : {type : "boolean", group : "Misc", defaultValue : false},
+
+					/**
+					 * Determines the background color of the content in <code>TabContainer</code>.
+					 *
+					 * @since 1.71
+					 */
+					backgroundDesign : {type: "sap.m.PageBackgroundDesign", group: "Appearance", defaultValue: PageBackgroundDesign.List}
 				},
 				aggregations : {
 
@@ -47,7 +99,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 					items : {type : "sap.m.TabContainerItem", multiple : true, singularName: "item", bindable: "bindable"},
 
 					/**
-					 * The <code>Add New Tab</code> button displayed in the <code>TabStrip</code>.
+					 * The <i>Add New Tab</i> button displayed in the <code>TabStrip</code>.
 					 */
 					_addNewButton : {type : "sap.m.Button", multiple : false, visibility : "hidden"},
 
@@ -59,7 +111,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 				associations : {
 
 					/**
-					 * Sets or retrieves the selected item from the aggregation named items.
+					 * Sets or retrieves the selected item from the <code>items</code> aggregation.
 					 */
 					selectedItem : {type : "sap.m.TabContainerItem", multiple : false}
 				},
@@ -93,10 +145,12 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 					},
 
 					/**
-					 * Fired when <code>Add New Tab</code> button is pressed.
+					 * Fired when the <i>Add New Tab</i> button is pressed.
 					 */
 					addNewButtonPress: { }
-				}
+				},
+				designtime: "sap/m/designtime/TabContainer.designtime",
+				dnd: { draggable: false, droppable: true }
 			},
 			constructor : function (vId, mSettings) {
 				var aStashedItems = [];
@@ -114,12 +168,12 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 					delete mSettings['items'];
 				}
 
-				sap.ui.base.ManagedObject.prototype.constructor.apply(this, arguments);
-				var oControl = new sap.m.TabStrip(this.getId() + "--tabstrip", {
+				Control.prototype.constructor.apply(this, arguments);
+				var oControl = new TabStrip(this.getId() + "--tabstrip", {
 					hasSelect: true,
 					itemSelect: function(oEvent) {
 						var oItem = oEvent.getParameter("item"),
-						    oSelectedItem = this._fromTabStripItem(oItem);
+							oSelectedItem = this._fromTabStripItem(oItem);
 						this.setSelectedItem(oSelectedItem, oEvent);
 					}.bind(this),
 					itemClose: function(oEvent) {
@@ -128,8 +182,10 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 
 						// prevent the tabstrip from closing the item by default
 						oEvent.preventDefault();
-						if (this.fireItemClose({item: oRemovedItem})) {
-							this.removeItem(oRemovedItem); // the tabstrip item will also get removed
+						if (this.fireItemClose({ item: oRemovedItem })) {
+							if (!this.getBinding("items")) {
+								this.removeItem(oRemovedItem); // the tabstrip item will also get removed
+							}
 						}
 
 					}.bind(this)
@@ -146,8 +202,30 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 					this.addItem(oItem);
 				}, this);
 
+				this.data("sap-ui-fastnavgroup", "true", true);
 			}
 		});
+
+		/* Contains mapping between TabContainerItem properties and TabStripItem properties,
+		that may be set via setter method */
+		var mTCItemToTSItemProperties = {
+			"name": "text",
+			"additionalText": "additionalText",
+			"icon": "icon",
+			"iconTooltip": "iconTooltip",
+			"modified": "modified"
+		};
+
+		ResponsivePaddingsEnablement.call(TabContainer.prototype, {
+			header: {selector: ".sapMTabStripContainer"}
+		});
+
+		/**
+		 * Called when control is initialized.
+		 */
+		TabContainer.prototype.init = function () {
+			this._initResponsivePaddingsEnablement();
+		};
 
 		/**
 		 * Called before the control is rendered.
@@ -171,15 +249,15 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			var oRb = sap.ui.getCore().getLibraryResourceBundle("sap.m");
 
 			if (!oControl) {
-				oControl = new sap.m.Button({
-					type: sap.m.ButtonType.Transparent,
+				oControl = new Button({
+					type: ButtonType.Transparent,
 					tooltip: oRb.getText("TABCONTAINER_ADD_NEW_TAB"),
 					icon: IconPool.getIconURI("add"),
 					press: function() {
 						this.getParent().getParent().fireAddNewButtonPress();
 					}
 				});
-
+				oControl.addStyleClass("sapMTSAddNewTabBtn");
 				this.setAggregation("_addNewButton", oControl, true);
 			}
 
@@ -196,7 +274,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		/**
 		 * Finds a <code>TabContainerItem</code> corresponding to a given <code>TabStripItem</code>.
 		 *
-		 * @param oItem {sap.m.TabStripItem} <code>TabStripItem</code> instance, the corresponding <code>TabContainerItem</code> to be searched for
+		 * @param {sap.m.TabStripItem} oItem <code>TabStripItem</code> instance, the corresponding <code>TabContainerItem</code> to be searched for
 		 * @returns {sap.m.TabStripItem | null} The <code>TabContainerItem</code> found (if any)
 		 * @private
 		 */
@@ -219,7 +297,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		 *
 		 * @param {sap.m.TabContainerItem | string} vItem object or ID of the <code>TabContainerItem</code>
 		 * @returns {sap.m.TabStripItem | null} <code>TabStripItem</code> corresponding to a given <code>sap.m.TabContainerItem</code> (if any)
-		 * @protected
+		 * @private
 		 */
 		TabContainer.prototype._toTabStripItem = function(vItem) {
 			var iIndex = 0,
@@ -250,8 +328,8 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		};
 
 		/**
-		 * Gets the <code>TabContainerItem</code> content if present.
-		 * @returns { null | array <sap.ui.core.Control> }
+		 * Gets the <code>TabContainerItem</code> content of the selected item if present.
+		 * @returns { null | Array<sap.ui.core.Control> } The <code>TabContainerItem</code> content
 		 * @private
 		 */
 		TabContainer.prototype._getSelectedItemContent = function() {
@@ -271,16 +349,22 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		/**
 		 * Calculates the next item to be focused and selected and applies the focus and selection when an item is removed.
 		 *
-		 * @param bSetAsSelected {boolean} Whether the next item to be selected
+		 * @param {boolean} bSetAsSelected Whether the next item to be selected
 		 * @private
 		 */
 		TabContainer.prototype._moveToNextItem = function (bSetAsSelected) {
+			if (!this._getTabStrip()._oItemNavigation) {
+				return;
+			}
+
 			var iItemsCount = this.getItems().length,
 					iCurrentFocusedIndex = this._getTabStrip()._oItemNavigation.getFocusedIndex(),
 					iNextIndex = iItemsCount === iCurrentFocusedIndex ? --iCurrentFocusedIndex : iCurrentFocusedIndex,
 					oNextItem = this.getItems()[iNextIndex],
 					fnFocusCallback = function () {
-						this._getTabStrip()._oItemNavigation.focusItem(iNextIndex);
+						if (this._getTabStrip()._oItemNavigation) {
+							this._getTabStrip()._oItemNavigation.focusItem(iNextIndex);
+						}
 					};
 
 			// Selection (causes invalidation)
@@ -290,28 +374,52 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 				this.fireItemSelect({item: oNextItem});
 			}
 			// Focus (force to wait until invalidated)
-			jQuery.sap.delayedCall(0, this, fnFocusCallback);
+			if (document.activeElement.classList.contains('sapMTabStripSelectListItemCloseBtn')) {
+				setTimeout(fnFocusCallback.bind(this), 0);
+			}
+		};
+
+		TabContainer.prototype._attachItemPropertyChanged = function (oTabContainerItem) {
+			oTabContainerItem.attachItemPropertyChanged(function (oEvent) {
+				var sPropertyKey = oEvent['mParameters'].propertyKey;
+
+				if (mTCItemToTSItemProperties[sPropertyKey]) {//forward only if such property exists in TabStripItem
+					sPropertyKey = mTCItemToTSItemProperties[sPropertyKey];
+					var oTabStripItem = this._toTabStripItem(oEvent.getSource());
+					// call it directly with the setter name so overwritten functions can be called and not setProperty method directly
+					var sMethodName = "set" + sPropertyKey.substr(0,1).toUpperCase() + sPropertyKey.substr(1);
+					oTabStripItem && oTabStripItem[sMethodName](oEvent['mParameters'].propertyValue);
+				}
+			}.bind(this));
 		};
 
 		/**
 		 * Removes an item from the aggregation named <code>items</code>.
 		 *
-		 * @param vItem {int | string | sap.m.TabContainerItem} The item to remove or its index or ID
+		 * @param {int | string | sap.m.TabContainerItem} vItem The item to remove or its index or ID
 		 * @returns {sap.m.TabContainerItem} The removed item or null
 		 * @public
 		 */
 		TabContainer.prototype.removeItem = function(vItem) {
-			var bIsSelected;
+			var oTabStrip = this._getTabStrip(),
+				bIsSelected, oTab;
 
-			if (!vItem) {
+			if (typeof vItem === "undefined" || vItem === null) {
 				return null;
 			}
 
-			// The selection flag of the removed item
-			bIsSelected = vItem.getId() === this.getSelectedItem();
 			//Remove the corresponding TabContainerItem
 			vItem = this.removeAggregation("items", vItem);
-			this._getTabStrip().removeItem(this._toTabStripItem(vItem));
+
+			// The selection flag of the removed item
+			bIsSelected = vItem.getId() === this.getSelectedItem();
+
+			oTab = this._toTabStripItem(vItem);
+			if (oTab.getId() === oTabStrip.getSelectedItem()) {
+				oTabStrip.removeAllAssociation("selectedItem", true);
+			}
+			oTabStrip.removeItem(oTab);
+
 			// Perform selection switch
 			this._moveToNextItem(bIsSelected);
 
@@ -321,53 +429,63 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		/**
 		 * Overrides the method in order to handle propagation of item property changes to the <code>_tabStrip</code> instance copies.
 		 *
-		 * @param sAggregationName {string} Name of the added aggregation
-		 * @param oObject {object} Instance that is going to be added
-		 * @param bSuppressInvalidate {boolean} Flag indicating whether invalidation should be suppressed
+		 * @param {string} sAggregationName Name of the added aggregation
+		 * @param {object} oObject Instance that is going to be added
+		 * @param {boolean} bSuppressInvalidate Flag indicating whether invalidation should be suppressed
 		 * @returns {object} This instance for chaining
 		 */
 		TabContainer.prototype.addAggregation = function(sAggregationName, oObject, bSuppressInvalidate) {
-			var oTabStripItem,
-				sPropertyKey;
-
 			if (sAggregationName === 'items') {
-				oObject.attachItemPropertyChanged(function (oEvent) {
-					oTabStripItem = this._toTabStripItem(oEvent.getSource());
-					sPropertyKey = oEvent['mParameters'].propertyKey;
-					if (sPropertyKey === 'name') {
-						sPropertyKey = 'text';
-					}
-
-					if (oTabStripItem) {
-						oTabStripItem.setProperty(sPropertyKey, oEvent['mParameters'].propertyValue, false);
-					}
-				}.bind(this));
+				this._attachItemPropertyChanged(oObject);
 			}
+
 			return Control.prototype.addAggregation.call(this, sAggregationName, oObject, bSuppressInvalidate);
 		};
 
 		/**
+		 * Overrides the method in order to handle propagation of item property changes to the <code>_tabStrip</code> instance copies.
+		 *
+		 * @param {string} sAggregationName Name of the added aggregation
+		 * @param {object} oObject Instance that is going to be added
+		 * @param {int} iIndex Index to insert the item
+		 * @param {boolean} bSuppressInvalidate Flag indicating whether invalidation should be suppressed
+		 * @returns {object} This instance for chaining
+		 */
+		TabContainer.prototype.insertAggregation = function(sAggregationName, oObject, iIndex, bSuppressInvalidate) {
+			if (sAggregationName === 'items') {
+				this._attachItemPropertyChanged(oObject);
+			}
+
+			return Control.prototype.insertAggregation.call(this, sAggregationName, oObject, iIndex, bSuppressInvalidate);
+		};
+
+		/*
 		 * Adds a new <code>TabContainerItem</code> to the <code>items</code> aggregation of the <code>TabContainer</code>.
 		 *
-		 * @param oItem {sap.m.TabContainerItem} The new <code>TabContainerItem</code> to be added
-		 * @returns {sap.m.TabContainerItem} The newly added <code>TabContainerItem</code>
+		 * @param {sap.m.TabContainerItem} oItem The new <code>TabContainerItem</code> to be added
+		 * @returns {sap.m.TabContainer} This <code>TabContainer</code> to allow method chaining
 		 * @override
 		 */
 		TabContainer.prototype.addItem = function(oItem) {
 			this.addAggregation("items", oItem, false);
 
 			this._getTabStrip().addItem(
-				new sap.m.TabStripItem({
+				new TabStripItem({
 					key: oItem.getId(),
 					text: oItem.getName(),
-					modified: oItem.getModified()
+					additionalText: oItem.getAdditionalText(),
+					icon: oItem.getIcon(),
+					iconTooltip: oItem.getIconTooltip(),
+					modified: oItem.getModified(),
+					tooltip: oItem.getTooltip(),
+					customData: oItem.getCustomData()
 				})
 			);
 
-			return oItem;
+			return this;
 		};
 
-		/**
+		/*
 		 * Destroys all <code>TabContainerItem</code> entities from the <code>items</code> aggregation of the <code>TabContainer</code>.
 		 *
 		 * @returns {sap.m.TabContainer} This instance for chaining
@@ -375,24 +493,30 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		 */
 		TabContainer.prototype.destroyItems = function() {
 			this._getTabStrip().destroyItems();
+			this.setAssociation("selectedItem", null);
 
 			return this.destroyAggregation("items");
 		};
 
-		/**
+		/*
 		 * Inserts a new <code>TabContainerItem</code> to the <code>items</code> aggregation of the <code>TabContainer</code> at a specified index.
 		 *
-		 * @param oItem {sap.m.TabContainerItem} The new <code>TabContainerItem</code> to be inserted
-		 * @param iIndex {int} The index where the passed <code>TabContainerItem</code> to be inserted
+		 * @param {sap.m.TabContainerItem} oItem The new <code>TabContainerItem</code> to be inserted
+		 * @param {int} iIndex The index where the passed <code>TabContainerItem</code> to be inserted
 		 * @returns {sap.m.TabContainer} This instance for chaining
 		 * @override
 		 */
 		TabContainer.prototype.insertItem = function(oItem, iIndex) {
 			this._getTabStrip().insertItem(
-				new sap.m.TabStripItem({
+				new TabStripItem({
 					key: oItem.getId(),
 					text: oItem.getName(),
-					modified: oItem.getModified()
+					additionalText: oItem.getAdditionalText(),
+					icon: oItem.getIcon(),
+					iconTooltip: oItem.getIconTooltip(),
+					modified: oItem.getModified(),
+					tooltip: oItem.getTooltip(),
+					customData: oItem.getCustomData()
 				}),
 				iIndex
 			);
@@ -400,7 +524,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			return this.insertAggregation("items", oItem, iIndex);
 		};
 
-		/**
+		/*
 		 * Removes all <code>TabContainerItem</code> entities from the <code>items</code> aggregation of the <code>TabContainer</code>.
 		 *
 		 * @returns {sap.m.TabContainer} This instance for chaining
@@ -417,7 +541,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		/**
 		 * Overrides the <code>addButton</code> property setter to proxy to the <code>TabStrip</code>.
 		 *
-		 * @param oButton {sap.ui.core.Control} The new control to be set as <code>TabStrip</code> <code>addButton</code> aggregation
+		 * @param {sap.ui.core.Control} oButton The new control to be set as <code>TabStrip</code> <code>addButton</code> aggregation
 		 * @returns {sap.m.TabContainer} This instance for chaining
 		 * @override
 		 */
@@ -435,24 +559,33 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			return this._getTabStrip().getAddButton();
 		};
 
-		/**
+		/*
 		 * Override <code>showAddNewButton</code> property setter to proxy to the <code>TabStrip</code>.
 		 *
-		 * @param bShowButton {boolean} Whether to show the <code>addNewButton</code>
+		 * @param {boolean} bShowButton Whether to show the <code>addNewButton</code>
+		 * @returns {sap.m.TabContainer} <code>this</code> pointer for chaining
 		 * @override
 		 */
 		TabContainer.prototype.setShowAddNewButton = function (bShowButton) {
+			this.setProperty("showAddNewButton", bShowButton, true);
+
+			if (Device.system.phone) {
+				bShowButton ? this.addStyleClass("sapUiShowAddNewButton") : this.removeStyleClass("sapUiShowAddNewButton");
+			}
+
 			var oTabStrip = this._getTabStrip();
 			if (oTabStrip) {
 				oTabStrip.setAddButton(bShowButton ? this._getAddNewTabButton() : null);
 			}
+
+			return this;
 		};
 
-		/**
+		/*
 		 * Override <code>selectedItem</code> property setter.
 		 *
-		 * @param oSelectedItem {sap.m.TabContainerItem} The new <code>TabContainerItem</code> to be selected
-		 * @param oEvent {object} Event object that may be present when the selection change is bubbling
+		 * @param {sap.m.TabContainerItem} oSelectedItem The new <code>TabContainerItem</code> to be selected
+		 * @param {jQuery.Event} oEvent  Event object that may be present when the selection change is bubbling
 		 * @returns {sap.m.TabContainer} <code>this</code> pointer for chaining
 		 * @override
 		 */
@@ -477,7 +610,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		/**
 		 * Re-renders only the displayed content.
 		 * @private
-		 * @param oContent Content, which should be rendered.
+		 * @param {Object} oContent The content, which should be rendered.
 		 */
 		TabContainer.prototype._rerenderContent = function(oContent) {
 			var $content = this.$("content"),
@@ -511,5 +644,4 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		};
 
 		return TabContainer;
-
-	}, /* bExport= */ true);
+	});

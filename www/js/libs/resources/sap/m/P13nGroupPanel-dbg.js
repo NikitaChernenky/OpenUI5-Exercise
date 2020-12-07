@@ -1,14 +1,24 @@
 /*
- * ! UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * ! OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.P13nGroupPanel.
 sap.ui.define([
-	'jquery.sap.global', './P13nConditionPanel', './P13nPanel', './library', 'sap/ui/core/Control'
-], function(jQuery, P13nConditionPanel, P13nPanel, library, Control) {
+	'./library',
+	'./P13nConditionPanel',
+	'./P13nPanel',
+	'./P13nGroupItem',
+	"sap/ui/thirdparty/jquery"
+], function(library, P13nConditionPanel, P13nPanel, P13nGroupItem, jQuery) {
 	"use strict";
+
+	// shortcut for sap.m.P13nPanelType
+	var P13nPanelType = library.P13nPanelType;
+
+	// shortcut for sap.m.P13nConditionOperation TODO: use enum in library.js or official API
+	var P13nConditionOperation = library.P13nConditionOperation;
 
 	/**
 	 * Constructor for a new P13nGroupPanel.
@@ -17,9 +27,10 @@ sap.ui.define([
 	 * @param {object} [mSettings] initial settings for the new control
 	 * @class The P13nGroupPanel control is used to define group-specific settings for table personalization.
 	 * @extends sap.m.P13nPanel
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 * @constructor
 	 * @public
+	 * @since 1.26.0
 	 * @alias sap.m.P13nGroupPanel
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
 	 */
@@ -32,8 +43,6 @@ sap.ui.define([
 
 				/**
 				 * Defines the maximum number of groups.
-				 *
-				 * @since 1.26
 				 */
 				maxGroups: {
 					type: "string",
@@ -44,8 +53,6 @@ sap.ui.define([
 				/**
 				 * Defines if <code>mediaQuery</code> or <code>ContainerResize</code> is used for a layout update. If <code>ConditionPanel</code>
 				 * is used in a dialog, the property must be set to true.
-				 *
-				 * @since 1.26
 				 */
 				containerQuery: {
 					type: "boolean",
@@ -55,9 +62,7 @@ sap.ui.define([
 
 				/**
 				 * Can be used to control the layout behavior. Default is "" which will automatically change the layout. With "Desktop", "Table"
-				 * or"Phone" you can set a fixed layout.
-				 *
-				 * @since 1.26
+				 * or "Phone" you can set a fixed layout.
 				 */
 				layoutMode: {
 					type: "string",
@@ -79,8 +84,6 @@ sap.ui.define([
 
 				/**
 				 * Defined group items.
-				 *
-				 * @since 1.26
 				 */
 				groupItems: {
 					type: "sap.m.P13nGroupItem",
@@ -93,52 +96,41 @@ sap.ui.define([
 
 				/**
 				 * Event raised if a <code>GroupItem</code> has been added.
-				 *
-				 * @since 1.26
 				 */
 				addGroupItem: {
 					parameters: {}
 				},
 
 				/**
-				 * Removes a group item.
-				 *
-				 * @since 1.26
+				 * Event raised if a <code>GroupItem</code> has been removed.
 				 */
 				removeGroupItem: {},
 
 				/**
-				 * Updates a group item.
-				 *
-				 * @since 1.26
+				 * Event raised if a <code>GroupItem</code> has been updated.
 				 */
 				updateGroupItem: {}
 			}
 		},
-		renderer: function(oRm, oControl) {
-			// start GroupPanel
-			oRm.write("<section");
-			oRm.writeControlData(oControl);
-			oRm.addClass("sapMGroupPanel");
-			oRm.writeClasses();
-			oRm.writeStyles();
-			oRm.write(">");
+		renderer: {
+			apiVersion: 2,
+			render: function(oRm, oControl){
+				oRm.openStart("section", oControl);
+				oRm.class("sapMGroupPanel");
+				oRm.openEnd();
 
-			// render content
-			oRm.write("<div");
-			oRm.addClass("sapMGroupPanelContent");
-			oRm.addClass("sapMGroupPanelBG");
+				oRm.openStart("div");
+				oRm.class("sapMGroupPanelContent");
+				oRm.class("sapMGroupPanelBG");
+				oRm.openEnd();
 
-			oRm.writeClasses();
-			oRm.write(">");
-			var aChildren = oControl.getAggregation("content");
-			var iLength = aChildren.length;
-			for (var i = 0; i < iLength; i++) {
-				oRm.renderControl(aChildren[i]);
+				oControl.getAggregation("content").forEach(function(oChildren){
+					oRm.renderControl(oChildren);
+				});
+
+				oRm.close("div");
+				oRm.close("section");
 			}
-			oRm.write("</div>");
-
-			oRm.write("</section>");
 		}
 	});
 
@@ -148,6 +140,7 @@ sap.ui.define([
 		if (this._oGroupPanel) {
 			this._oGroupPanel.setMaxConditions(sMax);
 		}
+		return this;
 	};
 
 	/**
@@ -163,12 +156,14 @@ sap.ui.define([
 		this.setProperty("containerQuery", b);
 
 		this._oGroupPanel.setContainerQuery(b);
+		return this;
 	};
 
 	P13nGroupPanel.prototype.setLayoutMode = function(sMode) {
 		this.setProperty("layoutMode", sMode);
 
 		this._oGroupPanel.setLayoutMode(sMode);
+		return this;
 	};
 
 	/**
@@ -176,7 +171,7 @@ sap.ui.define([
 	 * user know that some values are not correct or missing.
 	 *
 	 * @public
-	 * @since 1.26
+	 * @returns {boolean} <code>True</code> if all conditions are valid, <code>false</code> otherwise.
 	 */
 	P13nGroupPanel.prototype.validateConditions = function() {
 		return this._oGroupPanel.validateConditions();
@@ -214,8 +209,7 @@ sap.ui.define([
 	 * Setter for the supported operations array.
 	 *
 	 * @public
-	 * @since 1.26
-	 * @param {array} array of operations [sap.m.P13nConditionOperation.BT, sap.m.P13nConditionOperation.EQ]
+	 * @param {array} aOperations array of operations <code>[sap.m.P13nConditionOperation.BT, sap.m.P13nConditionOperation.EQ]</code>
 	 */
 	P13nGroupPanel.prototype.setOperations = function(aOperation) {
 		this._aOperations = aOperation;
@@ -225,25 +219,17 @@ sap.ui.define([
 		}
 	};
 
-	/**
-	 * Initialize the control
-	 *
-	 * @private
-	 */
 	P13nGroupPanel.prototype.init = function() {
-		this.setType(sap.m.P13nPanelType.group);
+		this.setType(P13nPanelType.group);
+		this.setTitle(sap.ui.getCore().getLibraryResourceBundle("sap.m").getText("GROUPPANEL_TITLE"));
 
 		sap.ui.getCore().loadLibrary("sap.ui.layout");
-		jQuery.sap.require("sap.ui.layout.Grid");
-
-		sap.ui.layout.Grid.prototype.init.apply(this);
 
 		this._aKeyFields = [];
-		this.addStyleClass("sapMGroupPanel");
 
 		if (!this._aOperations) {
 			this.setOperations([
-				sap.m.P13nConditionOperation.GroupAscending, sap.m.P13nConditionOperation.GroupDescending
+				P13nConditionOperation.GroupAscending, P13nConditionOperation.GroupDescending
 			]);
 		}
 
@@ -255,6 +241,7 @@ sap.ui.define([
 			validationExecutor: jQuery.proxy(this._callValidationExecutor, this)
 		});
 		this._oGroupPanel.setOperations(this._aOperations);
+		this._oGroupPanel._sAddRemoveIconTooltipKey = "GROUP";
 
 		this.addAggregation("content", this._oGroupPanel);
 	};
@@ -299,14 +286,15 @@ sap.ui.define([
 					tooltip: fGetValueOfProperty("tooltip", oContext, oItem_)
 				});
 			});
+			aKeyFields.splice(0, 0, {
+				key: null,
+				text: sap.ui.getCore().getLibraryResourceBundle("sap.m").getText("P13NDIALOG_SELECTION_NONE")
+			});
 			this._oGroupPanel.setKeyFields(aKeyFields);
 
 			var aConditions = [];
 			sModelName = (this.getBindingInfo("groupItems") || {}).model;
 			this.getGroupItems().forEach(function(oGroupItem_) {
-				// Note: current implementation assumes that the length of groupItems aggregation is equal
-				// to the number of corresponding model items.
-				// Currently the model data is up-to-date so we need to resort to the Binding Context;
 				// the "groupItems" aggregation data - obtained via getGroupItems() - has the old state !
 				var oContext = oGroupItem_.getBindingContext(sModelName);
 				// Update key of model (in case of 'restore' the key in model gets lost because it is overwritten by Restore Snapshot)
@@ -330,14 +318,18 @@ sap.ui.define([
 		if (!this._bIgnoreBindCalls) {
 			this._bUpdateRequired = true;
 		}
+
+		return this;
 	};
 
 	P13nGroupPanel.prototype.removeItem = function(oItem) {
-		P13nPanel.prototype.removeItem.apply(this, arguments);
+		var oRemoved = P13nPanel.prototype.removeItem.apply(this, arguments);
 
 		if (!this._bIgnoreBindCalls) {
 			this._bUpdateRequired = true;
 		}
+
+		return oRemoved;
 	};
 
 	P13nGroupPanel.prototype.destroyItems = function() {
@@ -351,15 +343,17 @@ sap.ui.define([
 	};
 
 	P13nGroupPanel.prototype.addGroupItem = function(oGroupItem) {
-		this.addAggregation("groupItems", oGroupItem);
+		this.addAggregation("groupItems", oGroupItem, true);
 
 		if (!this._bIgnoreBindCalls) {
 			this._bUpdateRequired = true;
 		}
+
+		return this;
 	};
 
 	P13nGroupPanel.prototype.insertGroupItem = function(oGroupItem, iIndex) {
-		this.insertAggregation("groupItems", oGroupItem, iIndex);
+		this.insertAggregation("groupItems", oGroupItem, iIndex, true);
 
 		if (!this._bIgnoreBindCalls) {
 			this._bUpdateRequired = true;
@@ -371,13 +365,14 @@ sap.ui.define([
 	P13nGroupPanel.prototype.updateGroupItems = function(sReason) {
 		this.updateAggregation("groupItems");
 
-		if (sReason == "change" && !this._bIgnoreBindCalls) {
-			this._bUpdateRequired = true;
-		}
+        if (sReason === "change" && !this._bIgnoreBindCalls) {
+            this._bUpdateRequired = true;
+            this.invalidate();
+        }
 	};
 
 	P13nGroupPanel.prototype.removeGroupItem = function(oGroupItem) {
-		oGroupItem = this.removeAggregation("groupItems", oGroupItem);
+		oGroupItem = this.removeAggregation("groupItems", oGroupItem, true);
 
 		if (!this._bIgnoreBindCalls) {
 			this._bUpdateRequired = true;
@@ -387,7 +382,7 @@ sap.ui.define([
 	};
 
 	P13nGroupPanel.prototype.removeAllGroupItems = function() {
-		var aGroupItems = this.removeAllAggregation("groupItems");
+		var aGroupItems = this.removeAllAggregation("groupItems", true);
 
 		if (!this._bIgnoreBindCalls) {
 			this._bUpdateRequired = true;
@@ -428,9 +423,10 @@ sap.ui.define([
 					index: iIndex,
 					groupItemData: oGroupItem
 				});
+				that._notifyChange();
 			}
 			if (sOperation === "add") {
-				oGroupItem = new sap.m.P13nGroupItem({
+				oGroupItem = new P13nGroupItem({
 					key: sKey,
 					columnKey: oNewData.keyField,
 					operation: oNewData.operation,
@@ -443,6 +439,7 @@ sap.ui.define([
 					groupItemData: oGroupItem
 				});
 				that._bIgnoreBindCalls = false;
+				that._notifyChange();
 			}
 			if (sOperation === "remove") {
 				that._bIgnoreBindCalls = true;
@@ -451,6 +448,7 @@ sap.ui.define([
 					index: iIndex
 				});
 				that._bIgnoreBindCalls = false;
+				that._notifyChange();
 			}
 		};
 	};
@@ -501,8 +499,16 @@ sap.ui.define([
 		if (fListener) {
 			fListener(this, jQuery.proxy(this._updateValidationResult, this));
 		}
+		return this;
+	};
+
+	P13nGroupPanel.prototype._notifyChange = function() {
+		var fListener = this.getChangeNotifier();
+		if (fListener) {
+			fListener(this);
+		}
 	};
 
 	return P13nGroupPanel;
 
-}, /* bExport= */true);
+});

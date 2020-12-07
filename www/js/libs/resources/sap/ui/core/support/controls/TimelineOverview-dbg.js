@@ -1,13 +1,17 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', 'sap/ui/base/ManagedObject'],
-	function (jQuery, ManagedObject) {
+sap.ui.define(['sap/ui/base/ManagedObject'],
+	function (ManagedObject) {
 		'use strict';
-		var TimelineOverview = ManagedObject.extend("sap.ui.core.support.controls.TimelineOverview", {});
+		var TimelineOverview = ManagedObject.extend("sap.ui.core.support.controls.TimelineOverview", {
+			metadata: {
+				library: "sap.ui.core"
+			}
+		});
 
 		TimelineOverview.prototype.setInteractions = function (interactions) {
 

@@ -1,12 +1,12 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.ui.layout.HorizontalLayout.
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', './library'],
-	function(jQuery, Control, library) {
+sap.ui.define(['sap/ui/core/Control', './library', "./HorizontalLayoutRenderer"],
+	function(Control, library, HorizontalLayoutRenderer) {
 	"use strict";
 
 
@@ -22,7 +22,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', './library'],
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
@@ -47,11 +47,21 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', './library'],
 			 * The controls inside this layout
 			 */
 			content : {type : "sap.ui.core.Control", multiple : true, singularName : "content"}
-		}
+		},
+		designtime: "sap/ui/layout/designtime/HorizontalLayout.designtime",
+		dnd: { draggable: false, droppable: true }
 	}});
 
+	/**
+	 * @see sap.ui.core.Control#getAccessibilityInfo
+	 * @returns {object} Current accessibility state of the control
+	 * @protected
+	 */
+	HorizontalLayout.prototype.getAccessibilityInfo = function() {
+		return {children: this.getContent()};
 
+	};
 
 	return HorizontalLayout;
 
-}, /* bExport= */ true);
+});

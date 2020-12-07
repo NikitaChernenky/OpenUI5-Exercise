@@ -1,10 +1,10 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './DatePickerRenderer'],
-	function(jQuery, Renderer, DatePickerRenderer) {
+sap.ui.define(['sap/ui/core/Renderer', './DatePickerRenderer'],
+	function(Renderer, DatePickerRenderer) {
 	"use strict";
 
 
@@ -13,6 +13,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './DatePickerRendere
 	 * @namespace
 	 */
 	var DateRangeSelectionRenderer = Renderer.extend(DatePickerRenderer);
+	DateRangeSelectionRenderer.apiVersion = 2;
 
 	/**
 	 * Write the value of the input.
@@ -23,8 +24,20 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './DatePickerRendere
 	 */
 	DateRangeSelectionRenderer.writeInnerValue = function(oRm, oControl) {
 
-		oRm.writeAttributeEscaped("value", oControl._formatValue(oControl.getDateValue(), oControl.getSecondDateValue()));
+		if (oControl._bValid) {
+			oRm.attr("value", oControl._formatValue(oControl.getDateValue(), oControl.getSecondDateValue()));
+		} else {
+			oRm.attr("value", oControl.getValue());
+		}
 
+	};
+
+	DateRangeSelectionRenderer.getAccessibilityState = function(oDP) {
+		var mAccessibilityState = DatePickerRenderer.getAccessibilityState.apply(this, arguments);
+
+		mAccessibilityState["roledescription"] = sap.ui.getCore().getLibraryResourceBundle("sap.m").getText("ACC_CTR_TYPE_DATERANGEINPUT");
+
+		return mAccessibilityState;
 	};
 
 	return DateRangeSelectionRenderer;

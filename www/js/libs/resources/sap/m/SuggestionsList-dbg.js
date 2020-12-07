@@ -1,19 +1,21 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.SuggestionsList.
-sap.ui.define(['./library'],
-	function(library) {
+sap.ui.define([
+		'./library',
+		'./SuggestionsListRenderer',
+		'sap/ui/core/Control'
+	], function(library, SuggestionsListRenderer, Control) {
 		"use strict";
 
 		//
 		// SuggestionsList has to be used exclusively by Suggest.js
 		//
-		var SuggestionsList = sap.ui.core.Control.extend("sap.m.SuggestionsList", {
-
+		var SuggestionsList = Control.extend("sap.m.SuggestionsList", {
 			metadata: {
 
 				library: "sap.m",
@@ -26,38 +28,7 @@ sap.ui.define(['./library'],
 					ariaLabelledBy: { type: "sap.ui.core.Control", multiple: true, singularName: "ariaLabelledBy" }
 				}
 			},
-
-			renderer: {
-				render: function(oRm, oList) {
-					oRm.write("<ul");
-					oRm.writeControlData(oList);
-					oRm.addClass("sapMSuL");
-					oRm.addClass("sapMSelectList");
-					oRm.writeClasses();
-					oRm.writeAccessibilityState({ role: "listbox" });
-					oRm.addStyle("width", oList.getWidth());
-					oRm.addStyle("max-width", oList.getMaxWidth());
-					oRm.writeStyles();
-					oRm.write(">");
-
-					this.renderItems(oRm, oList);
-
-					oRm.write("</ul>");
-				},
-
-				renderItems: function(oRm, oList) {
-					var searchValue;
-					var selectedIndex = oList.getSelectedItemIndex();
-					try {
-						searchValue = sap.ui.getCore().byId(oList.getParentInput()).getValue();
-					} catch (e) {
-						searchValue = "";
-					}
-					oList.getItems().forEach(function(item, index) {
-						item.render(oRm, item, searchValue, index === selectedIndex);
-					});
-				}
-			}
+			renderer: SuggestionsListRenderer
 		});
 
 		SuggestionsList.prototype.init = function() {
@@ -101,9 +72,13 @@ sap.ui.define(['./library'],
 
 			var items = this.getItems();
 			var index;
+			var item;
+			var itemId;
+			var parentInput = sap.ui.getCore().byId(this.getParentInput());
+			var descendantAttr = "aria-activedescendant";
 
 			// selectByIndex(null || undefined || -1) -> remove selection
-			if (isNaN(parseInt(iIndex, 10))) {
+			if (isNaN(parseInt(iIndex))) {
 				iIndex = -1;
 				bRelative = false;
 			}
@@ -133,8 +108,55 @@ sap.ui.define(['./library'],
 					.addClass("sapMSelectListItemBaseSelected")
 					.attr("aria-selected", "true");
 			}
+			// set aria-activedescendant attribute in the input itself:
+			if (parentInput) {
+				if (index >= 0) {
+					item = parentInput.getSuggestionItems()[index];
+
+					if (item) {
+						itemId = item.getId();
+						this._scrollToItem(item);
+					}
+				}
+				if (itemId) {
+					parentInput.$("I").attr(descendantAttr, itemId);
+				} else {
+					parentInput.$("I").removeAttr(descendantAttr);
+					parentInput.$("SuggDescr").text("");
+				}
+			}
 
 			return this._iSelectedItem;
+		};
+
+		/**
+		 * Scroll to the item if it is not visible on the popover.
+		 *
+		 * @private
+		 * @param {object} oItem The item to scroll to.
+		 */
+		SuggestionsList.prototype._scrollToItem = function(oItem) {
+			var oPopoverDomRef = this.getParent().$().find(".sapMPopoverCont")[0],
+				oPopoverRect,
+				oItemRect,
+				iTop,
+				iBottom;
+
+			if (!oItem || !oItem.getDomRef() || !oPopoverDomRef) {
+				return;
+			}
+
+			oItemRect = oItem.getDomRef().getBoundingClientRect();
+			oPopoverRect = oPopoverDomRef.getBoundingClientRect();
+
+			// If the item is outside of the popover scroll to it.
+			iTop = oPopoverRect.top - oItemRect.top;
+			iBottom = oItemRect.bottom - oPopoverRect.bottom;
+			if (iTop > 0) {
+				oPopoverDomRef.scrollTop = Math.max(oPopoverDomRef.scrollTop - iTop, 0);
+			} else if (iBottom > 0) {
+				oPopoverDomRef.scrollTop = oPopoverDomRef.scrollTop + iBottom;
+			}
 		};
 
 		SuggestionsList.prototype.getSelectedItemIndex = function(){
@@ -143,4 +165,4 @@ sap.ui.define(['./library'],
 
 		return SuggestionsList;
 
-	}, /* bExport= */ true);
+	});

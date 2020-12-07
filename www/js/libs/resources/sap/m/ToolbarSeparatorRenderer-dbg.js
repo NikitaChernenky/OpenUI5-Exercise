@@ -1,11 +1,11 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer'],
-	function(jQuery, Renderer) {
+sap.ui.define([],
+	function() {
 	"use strict";
 
 
@@ -13,20 +13,21 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer'],
 	 * ToolbarSeparator renderer.
 	 * @namespace
 	 */
-	var ToolbarSeparatorRenderer = {};
+	var ToolbarSeparatorRenderer = {
+		apiVersion: 2
+	};
 
 	ToolbarSeparatorRenderer.render = function(rm, oControl) {
-		rm.write("<div");
-		rm.writeControlData(oControl);
-		rm.addClass("sapMTBSeparator");
+		rm.openStart("div", oControl);
+		rm.class("sapMTBSeparator");
 
 		//ARIA
-		rm.writeAccessibilityState(oControl, {
+		rm.accessibilityState(oControl, {
 			role: "separator"
 		});
 
-		rm.writeClasses();
-		rm.write("></div>");
+		rm.openEnd();
+		rm.close("div");
 	};
 
 	return ToolbarSeparatorRenderer;

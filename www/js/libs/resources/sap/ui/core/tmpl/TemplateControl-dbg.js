@@ -1,12 +1,36 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.ui.core.tmpl.TemplateControl.
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/UIArea', 'sap/ui/core/DeclarativeSupport', 'sap/ui/core/library', './DOMElement'],
-	function(jQuery, Control, UIArea, DeclarativeSupport, library, DOMElement) {
+sap.ui.define([
+	'sap/ui/core/Control',
+	'sap/ui/core/DeclarativeSupport',
+	'sap/ui/core/library',
+	'sap/ui/core/UIArea',
+	'./DOMElement',
+	'./Template',
+	"./TemplateControlRenderer",
+	"sap/base/strings/capitalize",
+	"sap/base/strings/hyphenate",
+	"sap/base/Log",
+	"sap/ui/thirdparty/jquery"
+],
+	function(
+		Control,
+		DeclarativeSupport,
+		library,
+		UIArea,
+		DOMElement,
+		Template,
+		TemplateControlRenderer,
+		capitalize,
+		hyphenate,
+		Log,
+		jQuery
+	) {
 	"use strict";
 
 
@@ -20,12 +44,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/UIArea',
 	 * @class
 	 * This is the base class for all template controls. Template controls are declared based on templates.
 	 * @extends sap.ui.core.Control
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
-	 * @constructor
 	 * @public
-	 * @experimental Since version 1.15.
-	 * The templating might be changed in future versions.
+	 * @since 1.15
+	 * @deprecated since 1.56
 	 * @alias sap.ui.core.tmpl.TemplateControl
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
 	 */
@@ -74,7 +97,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/UIArea',
 	 */
 	TemplateControl.prototype.init = function() {
 
-		// list of binding informations to cleanup once the
+		// list of binding information to cleanup once the
 		// control is destroyed or re-rendering happens
 		this._aBindingInfos = [];
 
@@ -153,13 +176,15 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/UIArea',
 		this.destroyAggregation("controls");
 
 		// cleanup the bindings
-		if (this._aBindingInfos) {
-			var that = this;
-			jQuery.each(this._aBindingInfos, function(iIndex, oBindingInfo) {
-				that.getModel(oBindingInfo.model).removeBinding(oBindingInfo.binding);
-			});
-			this._aBindingInfos = [];
-		}
+		this._aBindingInfos.forEach(function(oBindingInfo) {
+			var oBinding = oBindingInfo.binding;
+			if ( oBinding ) {
+				oBinding.detachChange(oBindingInfo.changeHandler);
+				oBinding.destroy();
+			}
+		});
+
+		this._aBindingInfos = [];
 
 	};
 
@@ -236,27 +261,28 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/UIArea',
 	TemplateControl.prototype.bind = function(sPath, sType) {
 
 		// parse the path and create the binding
-		var oPathInfo = sap.ui.core.tmpl.Template.parsePath(sPath),
+		var oPathInfo = Template.parsePath(sPath),
 			oModel = this.getModel(oPathInfo.model),
 			sPath = oPathInfo.path,
-			sModelFunc = sType ? "bind" + jQuery.sap.charToUpperCase(sType) : "bindProperty",
+			sModelFunc = sType ? "bind" + capitalize(sType) : "bindProperty",
 			oBinding = oModel && oModel[sModelFunc](sPath),
-			that = this;
+			oBindingInfo = {
+				binding: oBinding,
+				path: oPathInfo.path,
+				model: oPathInfo.model
+			};
 
 		// attach a change handler (if the binding exists)
 		if (oBinding) {
-			oBinding.attachChange(function() {
-				jQuery.sap.log.debug("TemplateControl#" + that.getId() + ": " + sType + " binding changed for path \"" + sPath + "\"");
-				that.invalidate();
-			});
+			oBindingInfo.changeHandler = function() {
+				Log.debug("TemplateControl#" + this.getId() + ": " + sType + " binding changed for path \"" + sPath + "\"");
+				this.invalidate();
+			}.bind(this);
+			oBinding.attachChange(oBindingInfo.changeHandler);
 		}
 
 		// store the binding info for later cleanup
-		this._aBindingInfos.push({
-			binding: oBinding,
-			path: oPathInfo.path,
-			model: oPathInfo.model
-		});
+		this._aBindingInfos.push(oBindingInfo);
 
 		// return the external formatted value for the property
 		return oBinding;
@@ -275,8 +301,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/UIArea',
 	TemplateControl.prototype.calculatePath = function(sPath, sType) {
 		var oBindingContext = this.getBindingContext(),
 		    sBindingContextPath = oBindingContext && oBindingContext.getPath();
-		if (sPath && sBindingContextPath && !jQuery.sap.startsWith(sPath, "/")) {
-			if (!jQuery.sap.endsWith(sBindingContextPath, "/")) {
+		if (sPath && sBindingContextPath && !sPath.startsWith("/")) {
+			if (!sBindingContextPath.endsWith("/")) {
 				sBindingContextPath += "/";
 			}
 			sPath = sBindingContextPath + sPath;
@@ -300,7 +326,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/UIArea',
 
 
 	/**
-	 * Creates a pseudo binding for a aggregation to get notified once the property
+	 * Creates a pseudo binding for an aggregation to get notified once the property
 	 * changes to invalidate the control and trigger a re-rendering.
 	 *
 	 * @param {string} sPath the binding path
@@ -356,9 +382,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/UIArea',
 		// conversion for the values done (would be the better approach)
 		var mHTMLSettings = {};
 		jQuery.each(mSettings, function(sKey, oValue) {
-			mHTMLSettings["data-" + jQuery.sap.hyphen(sKey)] = oValue;
+			mHTMLSettings["data-" + hyphenate(sKey)] = oValue;
 		});
-		var $control = jQuery("<div/>", mHTMLSettings);
+		var $control = jQuery("<div></div>", mHTMLSettings);
 		var oControl = DeclarativeSupport._createControl($control.get(0), oView);
 		if (sParentPath) {
 			// set the context for the control

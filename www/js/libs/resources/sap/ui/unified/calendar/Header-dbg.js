@@ -1,12 +1,16 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 //Provides control sap.ui.unified.Calendar.
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/LocaleData', 'sap/ui/unified/library'],
-		function(jQuery, Control, LocaleData, library) {
+sap.ui.define([
+	'sap/ui/core/Control',
+	'sap/ui/unified/library',
+	"./HeaderRenderer",
+	"sap/ui/dom/containsOrEquals"
+], function(Control, library, HeaderRenderer, containsOrEquals) {
 	"use strict";
 
 	/**
@@ -23,7 +27,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/LocaleDa
 	 *
 	 * <b>Note:</b> This is used inside the calendar. Not for standalone usage
 	 * @extends sap.ui.core.Control
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
@@ -148,108 +152,176 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/LocaleDa
 		}
 	}});
 
-	Header.prototype.setTextButton0 = function(sText){
-
-		_setText.call(this, 0, sText);
+	/**
+	 * If set, the third button will be displayed
+	 *
+	 * @param bVisible
+	 * @returns {sap.ui.unified.calendar.Header}
+	 * @private
+	 */
+	Header.prototype._setVisibleButton3 = function (bVisible) {
+		this._visibleButton3 = bVisible;
+		this.invalidate();
 
 		return this;
-
 	};
 
-	Header.prototype.setAdditionalTextButton0 = function(sText){
-
-		_setAdditionalText.call(this, 0, sText);
-
-		return this;
-
+	/**
+	 * Gets the visibility of the private third button
+	 * @returns {boolean}
+	 * @private
+	 */
+	Header.prototype._getVisibleButton3 = function () {
+		return this._visibleButton3;
 	};
 
-	Header.prototype.setAriaLabelButton0 = function(sText){
-
-		_setAriaLabel.call(this, 0, sText);
+	/**
+	 * Text of the third button (normally month)
+	 *
+	 * @param sText
+	 * @returns {sap.ui.unified.calendar.Header}
+	 * @private
+	 */
+	Header.prototype._setTextButton3 = function(sText){
+		_setTextPrivateButton.call(this, 3, sText);
 
 		return this;
-
 	};
 
-	Header.prototype.setTextButton1 = function(sText){
-
-		_setText.call(this, 1, sText);
-
-		return this;
-
+	/**
+	 * Gets the text of the private third button
+	 * @returns {string}
+	 * @private
+	 */
+	Header.prototype._getTextButton3 = function () {
+		return this._textButton3;
 	};
 
-	Header.prototype.setAdditionalTextButton1 = function(sText){
-
-		_setAdditionalText.call(this, 1, sText);
+	/**
+	 * Additional text of the third button (normally month)
+	 * @param sText
+	 * @returns {sap.ui.unified.calendar.Header}
+	 */
+	Header.prototype._setAdditionalTextButton3 = function(sText){
+		_setAdditionalTextPrivateButton.call(this, 3, sText);
 
 		return this;
-
 	};
 
-	Header.prototype.setAriaLabelButton1 = function(sText){
-
-		_setAriaLabel.call(this, 1, sText);
-
-		return this;
-
+	/**
+	 * Gets the additional text of the private third button
+	 * @returns {string}
+	 * @private
+	 */
+	Header.prototype._getAdditionalTextButton3 = function () {
+		return this._additionalTextButton3;
 	};
 
-	Header.prototype.setTextButton2 = function(sText){
-
-		_setText.call(this, 2, sText);
+	/**
+	 * aria-label of the third button (normally month)
+	 * @param sText
+	 * @returns {sap.ui.unified.calendar.Header}
+	 * @private
+	 */
+	Header.prototype._setAriaLabelButton3 = function(sText){
+		_setAriaLabelPrivateButton.call(this, 3, sText);
 
 		return this;
-
 	};
 
-	Header.prototype.setAdditionalTextButton2 = function(sText){
-
-		_setAdditionalText.call(this, 2, sText);
-
-		return this;
-
+	/**
+	 * Gets the aria-label of the private third button
+	 * @returns {string}
+	 * @private
+	 */
+	Header.prototype._getAriaLabelButton3 = function () {
+		return this._ariaLabelButton3;
 	};
 
-	Header.prototype.setAriaLabelButton2 = function(sText){
-
-		_setAriaLabel.call(this, 2, sText);
+	/**
+	 * If set, the fourth button will be displayed
+	 *
+	 * @param bVisible
+	 * @returns {sap.ui.unified.calendar.Header}
+	 * @private
+	 */
+	Header.prototype._setVisibleButton4 = function (bVisible) {
+		this._visibleButton4 = bVisible;
+		this.invalidate();
 
 		return this;
-
 	};
 
-	Header.prototype.setEnabledPrevious = function(bEnabled){
-
-		this.setProperty("enabledPrevious", bEnabled, true);
-
-		if (this.getDomRef()) {
-			if (bEnabled) {
-				this.$("prev").toggleClass("sapUiCalDsbl", false).removeAttr("disabled");
-			}else {
-				this.$("prev").toggleClass("sapUiCalDsbl", true).attr("disabled", "disabled");
-			}
-		}
-
-		return this;
-
+	/**
+	 * Gets the visibility of the private fourth button
+	 * @returns {boolean}
+	 * @private
+	 */
+	Header.prototype._getVisibleButton4 = function () {
+		return this._visibleButton4;
 	};
 
-	Header.prototype.setEnabledNext = function(bEnabled){
-
-		this.setProperty("enabledNext", bEnabled, true);
-
-		if (this.getDomRef()) {
-			if (bEnabled) {
-				this.$("next").toggleClass("sapUiCalDsbl", false).removeAttr("disabled");
-			}else {
-				this.$("next").toggleClass("sapUiCalDsbl", true).attr("disabled", "disabled");
-			}
-		}
+	/**
+	 * Text of the fourth button (normally year)
+	 * @param sText
+	 * @returns {sap.ui.unified.calendar.Header}
+	 * @private
+	 */
+	Header.prototype._setTextButton4 = function(sText){
+		_setTextPrivateButton.call(this, 4, sText);
 
 		return this;
+	};
 
+	/**
+	 * Gets the text of the private fourth button
+	 * @returns {string}
+	 * @private
+	 */
+	Header.prototype._getTextButton4 = function () {
+		return this._textButton4;
+	};
+
+	/**
+	 * Additional text of the fourth button (normally year)
+	 * @param sText
+	 * @returns {sap.ui.unified.calendar.Header}
+	 * @private
+	 */
+	Header.prototype._setAdditionalTextButton4 = function(sText){
+		_setAdditionalTextPrivateButton.call(this, 4, sText);
+
+		return this;
+	};
+
+	/**
+	 * Gets the additional text of the private fourth button
+	 * @returns {string}
+	 * @private
+	 */
+	Header.prototype._getAdditionalTextButton4 = function () {
+		return this._additionalTextButton4;
+	};
+
+	/**
+	 * aria-label of the fourth button (normally year)
+	 * @param sText
+	 * @returns {sap.ui.unified.calendar.Header}
+	 * @private
+	 */
+	Header.prototype._setAriaLabelButton4 = function(sText){
+		_setAriaLabelPrivateButton.call(this, 4, sText);
+
+		return this;
+	};
+
+	/**
+	 * Gets the aria-label of the private fourth button
+	 * @returns {string}
+	 * @private
+	 */
+	Header.prototype._getAriaLabelButton4 = function () {
+		return this._ariaLabelButton4;
 	};
 
 	Header.prototype.onclick = function(oEvent){
@@ -258,16 +330,20 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/LocaleDa
 			return;
 		}
 
-		if (jQuery.sap.containsOrEquals(this.getDomRef("prev"), oEvent.target) && this.getEnabledPrevious()) {
+		if (containsOrEquals(this.getDomRef("prev"), oEvent.target) && this.getEnabledPrevious()) {
 			this.firePressPrevious();
-		} else if (jQuery.sap.containsOrEquals(this.getDomRef("next"), oEvent.target) && this.getEnabledNext()){
+		} else if (containsOrEquals(this.getDomRef("next"), oEvent.target) && this.getEnabledNext()){
 			this.firePressNext();
-		} else if (jQuery.sap.containsOrEquals(this.getDomRef("B0"), oEvent.target)){
+		} else if (containsOrEquals(this.getDomRef("B0"), oEvent.target)){
 			this.firePressButton0();
-		} else if (jQuery.sap.containsOrEquals(this.getDomRef("B1"), oEvent.target)){
+		} else if (containsOrEquals(this.getDomRef("B1"), oEvent.target)){
 			this.firePressButton1();
-		} else if (jQuery.sap.containsOrEquals(this.getDomRef("B2"), oEvent.target)){
+		} else if (containsOrEquals(this.getDomRef("B2"), oEvent.target)){
 			this.firePressButton2();
+		} else if (containsOrEquals(this.getDomRef("B3"), oEvent.target)){
+			this.fireEvent("pressButton3");
+		} else if (containsOrEquals(this.getDomRef("B4"), oEvent.target)){
+			this.fireEvent("pressButton4");
 		}
 
 	};
@@ -279,24 +355,21 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/LocaleDa
 
 	};
 
-	function _setText(iButton, sText){
+	function _setTextPrivateButton(iButton, sText) {
+		this["_textButton" + iButton] = sText;
 
-		this.setProperty("textButton" + iButton, sText, true);
-
-		if (this.getDomRef() && this["getVisibleButton" + iButton]()) {
+		if (this.isActive() && this["_getVisibleButton" + iButton]()) {
 			if (this.$("B" + iButton + "-Text").get(0)) {
 				this.$("B" + iButton + "-Text").text(sText);
 			} else {
 				this.$("B" + iButton).text(sText);
 			}
 		}
-
 	}
 
-	function _setAdditionalText(iButton, sText){
-
+	function _setAdditionalTextPrivateButton(iButton, sText) {
 		var bRerender = false;
-		var sOldText = this["getAdditionalTextButton" + iButton]();
+		var sOldText = this["_getAdditionalTextButton" + iButton]();
 
 		if (sOldText == sText) {
 			return;
@@ -306,28 +379,30 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/LocaleDa
 			bRerender = true;
 		}
 
-		this.setProperty("additionalTextButton" + iButton, sText, !bRerender);
+		this["_additionalTextButton" + iButton] = sText;
 
-		if (!bRerender && this.getDomRef() && this["getVisibleButton" + iButton]()) {
+		if (!bRerender && this.isActive() && this["_getVisibleButton" + iButton]()) {
 			this.$("B" + iButton + "-AddText").text(sText);
 		}
 
+		if (bRerender) {
+			this.invalidate();
+		}
 	}
 
-	function _setAriaLabel(iButton, sText){
 
-		this.setProperty("ariaLabelButton" + iButton, sText, true);
+	function _setAriaLabelPrivateButton(iButton, sText){
+		this["_ariaLabelButton" + iButton] = sText;
 
-		if (this.getDomRef() && this["getVisibleButton" + iButton]()) {
+		if (this.isActive() && this["_getVisibleButton" + iButton]()) {
 			if (sText) {
 				this.$("B" + iButton).attr("aria-label", sText);
 			} else {
 				this.$("B" + iButton).removeAttr("aria-label");
 			}
 		}
-
 	}
 
 	return Header;
 
-}, /* bExport= */ true);
+});

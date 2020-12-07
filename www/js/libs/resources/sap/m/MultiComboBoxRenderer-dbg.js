@@ -1,18 +1,18 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-sap.ui.define(['jquery.sap.global', './ComboBoxBaseRenderer', 'sap/ui/core/Renderer', 'sap/ui/core/ValueStateSupport'],
-	function(jQuery, ComboBoxBaseRenderer, Renderer, ValueStateSupport) {
+sap.ui.define(['./ComboBoxBaseRenderer','./ComboBoxTextFieldRenderer', 'sap/ui/core/Renderer', 'sap/ui/core/Core'],
+	function(ComboBoxBaseRenderer, ComboBoxTextFieldRenderer, Renderer, Core) {
 	"use strict";
 
 	/**
 	 * MultiComboBox renderer.
 	 * @namespace
 	 */
-	var MultiComboBoxRenderer = Renderer.extend(sap.m.ComboBoxBaseRenderer);
-
+	var MultiComboBoxRenderer = Renderer.extend(ComboBoxBaseRenderer);
+	MultiComboBoxRenderer.apiVersion = 2;
 	/**
 	 * CSS class to be applied to the HTML root element of the MultiComboBox control.
 	 *
@@ -21,69 +21,50 @@ sap.ui.define(['jquery.sap.global', './ComboBoxBaseRenderer', 'sap/ui/core/Rende
 	MultiComboBoxRenderer.CSS_CLASS_MULTICOMBOBOX = "sapMMultiComboBox";
 
 	/**
-	 * CSS class to be applied to the HTML root element of the MultiComboBox control.
-	 *
-	 * @type {string}
-	 */
-	MultiComboBoxRenderer.DOT_CSS_CLASS_MULTICOMBOBOX = ".sapMMultiComboBox";
-
-	/**
 	 * Add classes to the MultiComboBox.
-	 *
-	 * @param {sap.ui.core.RenderManager}
-	 *          oRm The RenderManager that can be used for writing to the render output buffer.
-	 * @param {sap.ui.core.Control}
-	 *          oControl An object representation of the control that should be rendered.
-	 */
-	MultiComboBoxRenderer.addOuterClasses = function(oRm, oControl) {
-		sap.m.ComboBoxBaseRenderer.addOuterClasses.apply(this, arguments);
-		oRm.addClass(MultiComboBoxRenderer.CSS_CLASS_MULTICOMBOBOX);
-		if (oControl._hasTokens()) {
-			oRm.addClass("sapMMultiComboBoxHasToken");
-		}
-	};
-
-	/**
-	 * Add inner classes to the MultiMultiComboBox's input element.
-	 *
-	 * @param {sap.ui.core.RenderManager}
-	 *          oRm The RenderManager that can be used for writing to the render output buffer.
-	 * @param {sap.ui.core.Control}
-	 *          oControl An object representation of the control that should be rendered.
-	 */
-	MultiComboBoxRenderer.addInnerClasses = function(oRm, oControl) {
-		ComboBoxBaseRenderer.addInnerClasses.apply(this, arguments);
-		oRm.addClass(MultiComboBoxRenderer.CSS_CLASS_MULTICOMBOBOX + "InputInner");
-	};
-
-	/**
-	 * Add CSS classes to the combo box arrow button, using the provided {@link sap.ui.core.RenderManager}.
-	 * To be overwritten by subclasses.
 	 *
 	 * @param {sap.ui.core.RenderManager} oRm The RenderManager that can be used for writing to the render output buffer.
 	 * @param {sap.ui.core.Control} oControl An object representation of the control that should be rendered.
 	 */
-	MultiComboBoxRenderer.addButtonClasses = function(oRm, oControl) {
-		ComboBoxBaseRenderer.addButtonClasses.apply(this, arguments);
-		oRm.addClass(MultiComboBoxRenderer.CSS_CLASS_MULTICOMBOBOX + "Arrow");
+	MultiComboBoxRenderer.addOuterClasses = function(oRm, oControl) {
+		ComboBoxBaseRenderer.addOuterClasses.apply(this, arguments);
+		oRm.class(MultiComboBoxRenderer.CSS_CLASS_MULTICOMBOBOX);
+
+		if (oControl.getProperty("hasSelection")) {
+			oRm.class("sapMMultiComboBoxHasToken");
+		}
+	};
+	/**
+	 * Returns the inner aria describedby ids for the accessibility.
+	 *
+	 * @param {sap.ui.core.Control} oControl an object representation of the control.
+	 * @returns {String|undefined}
+	 */
+	MultiComboBoxRenderer.getAriaDescribedBy = function (oControl) {
+		var sAriaDescribedBy = ComboBoxTextFieldRenderer.getAriaDescribedBy.apply(this, arguments),
+			oTokenizer = oControl.getAggregation("tokenizer"),
+			oInvisibleTextId = oTokenizer && oTokenizer.getTokensInfoId();
+
+		return (sAriaDescribedBy || "") + " " + oInvisibleTextId;
 	};
 
-	MultiComboBoxRenderer.openInputTag = function(oRm, oControl) {
-		oRm.write('<div class="sapMMultiComboBoxBorder"');
-		oRm.writeAttribute("id", oControl.getId() + "-border");  // UI5 core expect a DIV with ID
-		oRm.write(">");
+	/**
+	 * Retrieves the accessibility state of the control.
+	 *
+	 * @param {sap.ui.core.Control} oControl An object representation of the control that should be rendered.
+	 * @returns {object} The accessibility state of the control
+	 */
+	MultiComboBoxRenderer.getAccessibilityState = function (oControl) {
+		var mAccessibilityState = ComboBoxBaseRenderer.getAccessibilityState.apply(this, arguments),
+			oResourceBundle = Core.getLibraryResourceBundle("sap.m");
 
-		oRm.renderControl(oControl._oTokenizer);
+		mAccessibilityState.roledescription = oResourceBundle.getText("MULTICOMBOBOX_ARIA_ROLE_DESCRIPTION");
 
-		oRm.write("<div class=\"sapMMultiComboBoxInputContainer\">");
-		ComboBoxBaseRenderer.openInputTag.call(this, oRm, oControl);
+		return mAccessibilityState;
 	};
 
-	MultiComboBoxRenderer.closeInputTag = function(oRm, oControl) {
-		ComboBoxBaseRenderer.closeInputTag.call(this, oRm, oControl);
-		oRm.write("</div>");
-		oRm.write("</div>");
-		oRm.write("<div class=\"sapMMultiComboBoxShadowDiv\"/>");
+	MultiComboBoxRenderer.prependInnerContent = function (oRm, oControl) {
+		oRm.renderControl(oControl.getAggregation("tokenizer"));
 	};
 
 	return MultiComboBoxRenderer;

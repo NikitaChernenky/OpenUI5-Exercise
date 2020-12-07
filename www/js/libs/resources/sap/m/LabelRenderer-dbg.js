@@ -1,13 +1,22 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides the default renderer for control sap.m.Label
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer'],
-	function(jQuery, Renderer) {
+sap.ui.define(['sap/ui/core/Renderer', 'sap/m/library', 'sap/ui/core/library', 'sap/m/HyphenationSupport', "sap/ui/core/LabelEnablement"],
+	function(Renderer, library, coreLibrary, HyphenationSupport, LabelEnablement) {
 	"use strict";
+
+	// shortcut for sap.ui.core.TextDirection
+	var TextDirection = coreLibrary.TextDirection;
+
+	// shortcut for sap.ui.core.VerticalAlign
+	var VerticalAlign = coreLibrary.VerticalAlign;
+
+	// shortcut for sap.m.LabelDesign
+	var LabelDesign = library.LabelDesign;
 
 	/**
 	 * Label renderer.
@@ -15,7 +24,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer'],
 	 * @author SAP SE
 	 * @namespace
 	 */
-	var LabelRenderer = {};
+	var LabelRenderer = {
+		apiVersion: 2
+	};
 
 	/**
 	 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
@@ -25,74 +36,110 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer'],
 	 */
 	LabelRenderer.render = function(rm, oLabel){
 		// convenience variable
-		var r = LabelRenderer;
-
+		var r = LabelRenderer,
+			sTextDir = oLabel.getTextDirection(),
+			sTextAlign = oLabel.getTextAlign(),
+			sWidth = oLabel.getWidth(),
+			sLabelText = oLabel.getText(),
+			sTooltip = oLabel.getTooltip_AsString(),
+			sLabelForRendering = oLabel.getLabelForRendering(),
+			sHtmlTagToRender = sLabelForRendering ? "label" : "span",
+			bDisplayOnly = oLabel.isDisplayOnly(),
+			sVerticalAlign = oLabel.getVAlign();
 		// write the HTML into the render manager
-		rm.write("<label");
-		rm.writeControlData(oLabel);
+		// for accessibility reasons when a label doesn't have a "for" attribute, pointing at a HTML element it is rendered as span
+		rm.openStart(sHtmlTagToRender, oLabel);
 
 		// styles
-		rm.addClass("sapMLabel");
-		rm.addClass("sapUiSelectable");
+		rm.class("sapMLabel");
+		rm.class("sapUiSelectable");
+
+		// label wrapping
+		if (oLabel.isWrapping()) {
+			rm.class("sapMLabelWrapped");
+		}
 		// set design to bold
-		if (oLabel.getDesign() == sap.m.LabelDesign.Bold) {
-			rm.addStyle("font-weight", "bold");
+		if (oLabel.getDesign() == LabelDesign.Bold) {
+			rm.style("font-weight", "bold");
 		}
 
-		if (oLabel.getRequired()) {
-			rm.addClass("sapMLabelRequired");
+		if (oLabel.isRequired()) {
+			rm.class("sapMLabelRequired");
 		}
 
-		if (oLabel.getLabelForRendering()) {
-			sap.ui.core.LabelEnablement.writeLabelForAttribute(rm, oLabel);
+		if (sLabelForRendering) {
+			LabelEnablement.writeLabelForAttribute(rm, oLabel);
 		} else if (oLabel.getParent() instanceof sap.m.Toolbar) {
-			rm.addClass("sapMLabelTBHeader");
+			rm.class("sapMLabelTBHeader");
 		}
+
+		rm.accessibilityState({
+			label: oLabel.getText()
+		});
 
 		// text direction
-		var sTextDir = oLabel.getTextDirection();
-		if (sTextDir !== sap.ui.core.TextDirection.Inherit){
-			rm.writeAttribute("dir", sTextDir.toLowerCase());
+		if (sTextDir !== TextDirection.Inherit){
+			rm.attr("dir", sTextDir.toLowerCase());
 		}
 
 		// style for width
-		var sWidth = oLabel.getWidth();
 		if (sWidth) {
-			rm.addStyle("width", sWidth);
+			rm.style("width", sWidth);
 		} else {
-			rm.addClass("sapMLabelMaxWidth");
+			rm.class("sapMLabelMaxWidth");
 		}
 
 		// style for text alignment
-		var sTextAlign = oLabel.getTextAlign();
 		if (sTextAlign) {
-			var sTextAlign = r.getTextAlign(sTextAlign, sTextDir);
+			sTextAlign = r.getTextAlign(sTextAlign, sTextDir);
 			if (sTextAlign) {
-				rm.addStyle("text-align", sTextAlign);
+				rm.style("text-align", sTextAlign);
 			}
 		}
 
-		var sLabelText = oLabel.getText();
 		if (sLabelText == "") {
-			rm.addClass("sapMLabelNoText");
+			rm.class("sapMLabelNoText");
 		}
 
-		rm.writeStyles();
-		rm.writeClasses();
+		if (bDisplayOnly) {
+			rm.class("sapMLabelDisplayOnly");
+		}
 
-		var sTooltip = oLabel.getTooltip_AsString();
+		if (sVerticalAlign != VerticalAlign.Inherit) {
+			rm.style("vertical-align", sVerticalAlign.toLowerCase());
+		}
+
+		HyphenationSupport.writeHyphenationClass(rm, oLabel);
+
 		if (sTooltip) {
-			rm.writeAttributeEscaped("title", sTooltip);
+			rm.attr("title", sTooltip);
 		}
 
-		rm.write(">");
+		rm.openEnd();
+
+		// wrap the label text
+		rm.openStart("span", oLabel.getId() + "-text");
+		rm.class("sapMLabelTextWrapper");
+		rm.openEnd();
 
 		// write the label text
+		rm.openStart("bdi", oLabel.getId() + "-bdi");
+		rm.openEnd();
 
 		if (sLabelText) {
-			rm.writeEscaped(sLabelText);
+			sLabelText = HyphenationSupport.getTextForRender(oLabel, "main");
+			rm.text(sLabelText);
 		}
-		rm.write("</label>");
+		rm.close("bdi");
+		rm.close("span");
+
+		// shows the colon and the required asterisk
+		rm.openStart("span");
+		rm.class("sapMLabelColonAndRequired");
+		rm.openEnd();
+		rm.close("span");
+
+		rm.close(sHtmlTagToRender);
 	};
 
 	/**

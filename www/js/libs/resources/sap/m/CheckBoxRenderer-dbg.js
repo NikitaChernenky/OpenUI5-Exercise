@@ -1,12 +1,16 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport'],
-	function(jQuery, ValueStateSupport) {
+sap.ui.define(['sap/ui/core/library', 'sap/ui/core/ValueStateSupport', 'sap/ui/Device'],
+	function(coreLibrary, ValueStateSupport, Device) {
 	"use strict";
+
+
+	// shortcut for sap.ui.core.ValueState
+	var ValueState = coreLibrary.ValueState;
 
 
 	/**
@@ -14,6 +18,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport'],
 	 * @namespace
 	 */
 	var CheckBoxRenderer = {
+		apiVersion: 2
 	};
 
 
@@ -25,95 +30,160 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport'],
 	 */
 	CheckBoxRenderer.render = function(oRm, oCheckBox){
 		// get control properties
-		var bEnabled = oCheckBox.getEnabled();
-		var bEditable = oCheckBox.getEditable();
-		var oCbLabel = oCheckBox.getAggregation("_label");
+		var sId = oCheckBox.getId(),
+			bEnabled = oCheckBox.getEnabled(),
+			bDisplayOnly = oCheckBox.getDisplayOnly(),
+			bEditable = oCheckBox.getEditable(),
+			bInteractive = bEnabled && !bDisplayOnly,
+			bDisplayOnlyApplied = bEnabled && bDisplayOnly,
+			oCbLabel = oCheckBox.getAggregation("_label"),
+			sValueState = oCheckBox.getValueState(),
+			bInErrorState = ValueState.Error === sValueState,
+			bInWarningState = ValueState.Warning === sValueState,
+			bInSuccessState = ValueState.Success === sValueState,
+			bInInformationState = ValueState.Information === sValueState,
+			bUseEntireWidth = oCheckBox.getUseEntireWidth();
 
 		// CheckBox wrapper
-		oRm.write("<div");
-		oRm.addClass("sapMCb");
+		oRm.openStart("div", oCheckBox);
+		oRm.class("sapMCb");
 
 		if (!bEditable) {
-			oRm.addClass("sapMCbRo");
+			oRm.class("sapMCbRo");
+		}
+
+		if (bDisplayOnlyApplied) {
+			oRm.class("sapMCbDisplayOnly");
 		}
 
 		if (!bEnabled) {
-			oRm.addClass("sapMCbBgDis");
+			oRm.class("sapMCbBgDis");
 		}
 
 		if (oCheckBox.getText()) {
-			oRm.addClass("sapMCbHasLabel");
+			oRm.class("sapMCbHasLabel");
 		}
 
-		oRm.writeControlData(oCheckBox);
-		oRm.writeClasses();
+		if (oCheckBox.getWrapping()) {
+			oRm.class("sapMCbWrapped");
+		}
 
-		var sTooltip = ValueStateSupport.enrichTooltip(oCheckBox, oCheckBox.getTooltip_AsString());
+		if (bInErrorState) {
+			oRm.class("sapMCbErr");
+		} else if (bInWarningState) {
+			oRm.class("sapMCbWarn");
+		} else if (bInSuccessState) {
+			oRm.class("sapMCbSucc");
+		} else if (bInInformationState) {
+			oRm.class("sapMCbInfo");
+		}
+
+		if (bUseEntireWidth) {
+			oRm.style("width", oCheckBox.getWidth());
+		}
+
+		var sTooltip = this.getTooltipText(oCheckBox);
+
 		if (sTooltip) {
-			oRm.writeAttributeEscaped("title", sTooltip);
+			oRm.attr("title", sTooltip);
 		}
 
-		if (bEnabled) {
-			oRm.writeAttribute("tabindex", oCheckBox.getTabIndex());
+		if (bInteractive) {
+			oRm.attr("tabindex", oCheckBox.getTabIndex());
 		}
 
 		//ARIA attributes
-		oRm.writeAccessibilityState(oCheckBox, {
+		oRm.accessibilityState(oCheckBox, {
 			role: "checkbox",
 			selected: null,
-			checked: oCheckBox.getSelected()
+			checked: oCheckBox._getAriaChecked(),
+			describedby: sTooltip ? sId + "-Descr" : undefined
 		});
 
-		oRm.write(">");		// DIV element
+		if (bDisplayOnlyApplied) {
+			oRm.attr("aria-readonly", true);
+		}
+
+		oRm.openEnd();		// DIV element
 
 		// write the HTML into the render manager
-		oRm.write("<div id='");
-		oRm.write(oCheckBox.getId() + "-CbBg'");
+		oRm.openStart("div", oCheckBox.getId() + "-CbBg");
 
 		// CheckBox style class
-		oRm.addClass("sapMCbBg");
+		oRm.class("sapMCbBg");
 
-		if (bEnabled && bEditable && sap.ui.Device.system.desktop) {
-			oRm.addClass("sapMCbHoverable");
+		if (bInteractive && bEditable && Device.system.desktop) {
+			oRm.class("sapMCbHoverable");
 		}
 
 		if (!oCheckBox.getActiveHandling()) {
-			oRm.addClass("sapMCbActiveStateOff");
+			oRm.class("sapMCbActiveStateOff");
 		}
 
-		oRm.addClass("sapMCbMark"); // TODO: sapMCbMark is redundant, remove it and simplify CSS
+		oRm.class("sapMCbMark"); // TODO: sapMCbMark is redundant, remove it and simplify CSS
 
 		if (oCheckBox.getSelected()) {
-			oRm.addClass("sapMCbMarkChecked");
+			oRm.class("sapMCbMarkChecked");
 		}
-		oRm.writeClasses();
 
-		oRm.write(">");		// DIV element
+		if (oCheckBox.getPartiallySelected()) {
+			oRm.class("sapMCbMarkPartiallyChecked");
+		}
 
-		oRm.write("<input type='CheckBox' id='");
-		oRm.write(oCheckBox.getId() + "-CB'");
+		oRm.openEnd();		// DIV element
+
+		oRm.voidStart("input", oCheckBox.getId() + "-CB");
+		oRm.attr("type", "CheckBox");
 
 		if (oCheckBox.getSelected()) {
-			oRm.writeAttribute("checked", "checked");
+			oRm.attr("checked", "checked");
 		}
 
 		if (oCheckBox.getName()) {
-			oRm.writeAttributeEscaped('name', oCheckBox.getName());
+			oRm.attr("name", oCheckBox.getName());
 		}
 
 		if (!bEnabled) {
-			oRm.write(" disabled=\"disabled\"");
+			oRm.attr("disabled", "disabled");
 		}
 
 		if (!bEditable) {
-			oRm.write(" readonly=\"readonly\"");
+			oRm.attr("readonly", "readonly");
 		}
 
-		oRm.write(" /></div>");
+		oRm.voidEnd();
+		oRm.close("div");
 		oRm.renderControl(oCbLabel);
-		oRm.write("</div>");
+
+		if (sTooltip && sap.ui.getCore().getConfiguration().getAccessibility()) {
+			// for ARIA, the tooltip must be in a separate SPAN and assigned via aria-describedby.
+			// otherwise, JAWS does not read it.
+			oRm.openStart("span", sId + "-Descr");
+			oRm.class("sapUiHidden");
+			oRm.openEnd();
+			oRm.text(sTooltip);
+			oRm.close("span");
+		}
+
+		oRm.close("div");
 	};
 
+	/**
+	 * Returns the correct value of the tooltip.
+	 *
+	 * @param {sap.m.CheckBox} oCheckBox CheckBox instance
+	 * @returns {string} The correct tooltip value
+	 */
+	CheckBoxRenderer.getTooltipText = function (oCheckBox) {
+		var sValueStateText = oCheckBox.getProperty("valueStateText"),
+			sTooltipText = oCheckBox.getTooltip_AsString();
+
+		if (sValueStateText) {
+			return (sTooltipText ? sTooltipText + " - " : "") + sValueStateText;
+		} else {
+			return ValueStateSupport.enrichTooltip(oCheckBox, sTooltipText);
+		}
+	};
 
 	return CheckBoxRenderer;
 

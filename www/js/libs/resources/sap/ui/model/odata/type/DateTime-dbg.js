@@ -1,11 +1,13 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['sap/ui/model/odata/type/DateTimeBase'],
-	function(DateTimeBase) {
+sap.ui.define([
+	"sap/base/Log",
+	"sap/ui/model/odata/type/DateTimeBase"
+], function (Log, DateTimeBase) {
 	"use strict";
 
 	/**
@@ -29,7 +31,7 @@ sap.ui.define(['sap/ui/model/odata/type/DateTimeBase'],
 			case undefined:
 				break;
 			default:
-				jQuery.sap.log.warning("Illegal displayFormat: " + oConstraints.displayFormat,
+				Log.warning("Illegal displayFormat: " + oConstraints.displayFormat,
 					null, oType.getName());
 			}
 			oAdjustedConstraints.nullable = oConstraints.nullable;
@@ -40,7 +42,7 @@ sap.ui.define(['sap/ui/model/odata/type/DateTimeBase'],
 	/**
 	 * Constructor for a primitive type <code>Edm.DateTime</code>.
 	 *
-	 * @class This class represents the OData primitive type <a
+	 * @class This class represents the OData V2 primitive type <a
 	 * href="http://www.odata.org/documentation/odata-version-2-0/overview#AbstractTypeSystem">
 	 * <code>Edm.DateTime</code></a>.
 	 *
@@ -50,14 +52,14 @@ sap.ui.define(['sap/ui/model/odata/type/DateTimeBase'],
 	 * Use <code>DateTime</code> with the SAP-specific annotation <code>display-format=Date</code>
 	 * (resp. the constraint <code>displayFormat: "Date"</code>) to display only a date.
 	 *
-	 * In {@link sap.ui.model.odata.v2.ODataModel ODataModel} this type is represented as a
-	 * <code>Date</code>. With the constraint <code>displayFormat: "Date"</code>, the timezone is
-	 * UTF and the time part is ignored, otherwise it is a date/time value in local time.
+	 * In {@link sap.ui.model.odata.v2.ODataModel} this type is represented as a
+	 * <code>Date</code>. With the constraint <code>displayFormat: "Date"</code>, the time zone is
+	 * UTC and the time part is ignored, otherwise it is a date/time value in local time.
 	 *
 	 * @extends sap.ui.model.odata.type.DateTimeBase
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @alias sap.ui.model.odata.type.DateTime
 	 * @param {object} [oFormatOptions]
@@ -69,7 +71,7 @@ sap.ui.define(['sap/ui/model/odata/type/DateTimeBase'],
 	 *   if <code>true</code>, the value <code>null</code> is accepted
 	 * @param {string} [oConstraints.displayFormat=undefined]
 	 *   may be "Date", in this case only the date part is used, the time part is always 00:00:00
-	 *   and the timezone is UTC to avoid timezone-related problems
+	 *   and the time zone is UTC to avoid time-zone-related problems
 	 * @public
 	 * @since 1.27.0
 	 */

@@ -1,6 +1,6 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -10,11 +10,13 @@ sap.ui.define(function() {
 
 
 	/**
-	 * @class Control renderer.
-	 * @static
+	 * TemplateControl renderer.
+	 * @namespace
 	 * @alias sap.ui.core.tmpl.TemplateControlRenderer
 	 */
-	var TemplateControlRenderer = {};
+	var TemplateControlRenderer = {
+		apiVersion: 1 // still uses version 1 as the API version of nested template controls is not known
+	};
 
 	/**
 	 * Renders the Template for the given control, using the provided
@@ -26,6 +28,7 @@ sap.ui.define(function() {
 	 * @param {sap.ui.core.tmpl.TemplateControl}
 	 *            oControl Object representation of the template control
 	 *            that should be rendered
+	 * @deprecated since 1.56
 	 */
 	TemplateControlRenderer.render = function(oRM, oControl) {
 
@@ -36,11 +39,7 @@ sap.ui.define(function() {
 		// if we have no common root tag, the re-rendering would not clean up
 		// the old markup properly.
 		if (!bSkipRootElement) {
-			oRM.write("<div");
-			oRM.writeControlData(oControl);
-			oRM.writeStyles();
-			oRM.writeClasses();
-			oRM.write(">");
+			oRM.openStart("div", oControl).openEnd();
 		}
 
 		// in case of declaring a control the renderTemplate function is part of the
@@ -52,7 +51,7 @@ sap.ui.define(function() {
 		}
 
 		if (!bSkipRootElement) {
-			oRM.write("</div>");
+			oRM.close("div");
 		}
 
 	};

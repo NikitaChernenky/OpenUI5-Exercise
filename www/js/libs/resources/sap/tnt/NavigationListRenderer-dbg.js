@@ -1,70 +1,90 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides the default renderer for control sap.tnt.NavigationList
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer'],
-	function(jQuery, Renderer) {
-		"use strict";
+sap.ui.define([
+	"sap/ui/core/Core"
+], function (Core) {
+	"use strict";
 
-		/**
-		 * NavigationListRenderer renderer.
-		 *
-		 * @author SAP SE
-		 * @namespace
-		 */
-		var NavigationListRenderer = {};
+	/**
+	 * NavigationListRenderer renderer.
+	 *
+	 * @author SAP SE
+	 * @namespace
+	 */
+	var NavigationListRenderer = {
+		apiVersion: 2
+	};
 
-		/**
-		 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
-		 *
-		 * @param {sap.ui.core.RenderManager} rm The RenderManager that can be used for writing to the renderer output buffer
-		 * @param {sap.ui.core.Control} control An object representation of the control that should be rendered
-		 */
-		NavigationListRenderer.render = function (rm, control) {
-			var group,
-				role,
-				groups = control.getItems(),
-				expanded = control.getExpanded();
+	var oRB = Core.getLibraryResourceBundle("sap.tnt");
 
-			rm.write("<ul");
-			rm.writeControlData(control);
+	/**
+	 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
+	 *
+	 * @param {sap.ui.core.RenderManager} rm The RenderManager that can be used for writing to the renderer output buffer
+	 * @param {sap.ui.core.Control} control An object representation of the control that should be rendered
+	 */
+	NavigationListRenderer.render = function (rm, control) {
+		var role,
+			groups = control.getItems(),
+			expanded = control.getExpanded(),
+			visibleGroups = [],
+			hasGroupWithIcon = false;
 
-			var width = control.getWidth();
-			if (width) {
-				rm.addStyle("width", width);
+		//Checking which groups should render
+		groups.forEach(function (group) {
+			if (group.getVisible()) {
+				visibleGroups.push(group);
+
+				if (group.getIcon()) {
+					hasGroupWithIcon = true;
+				}
 			}
-			rm.writeStyles();
+		});
 
-			rm.addClass("sapTntNavLI");
+		rm.openStart("ul", control);
 
-			if (!expanded) {
-				rm.addClass("sapTntNavLICollapsed");
-			}
+		var width = control.getWidth();
+		if (width && expanded) {
+			rm.style("width", width);
+		}
 
-			rm.writeClasses();
+		rm.class("sapTntNavLI");
 
-			// ARIA
-			if (control.getHasListBoxRole()) {
-				role = 'listbox';
-			} else {
-				role = expanded ? 'tree' : 'toolbar';
-			}
+		if (!expanded) {
+			rm.class("sapTntNavLICollapsed");
+		}
 
-			rm.writeAttribute("role", role);
+		if (!hasGroupWithIcon) {
+			rm.class("sapTntNavLINoIcons");
+		}
 
-			rm.write(">");
+		// ARIA
+		role = !expanded && !control.hasStyleClass("sapTntNavLIPopup") ? 'menubar' : 'tree';
 
-			for (var i = 0; i < groups.length; i++) {
-				group = groups[i];
-				group.render(rm, control);
-			}
+		rm.attr("role", role);
 
-			rm.write("</ul>");
-		};
+		if (role === 'menubar') {
+			rm.attr("aria-orientation", "vertical");
+			rm.attr("aria-roledescription", oRB.getText("NAVIGATION_LIST_ITEM_ROLE_DESCRIPTION_MENUBAR"));
+		} else {
+			rm.attr("aria-roledescription", oRB.getText("NAVIGATION_LIST_ITEM_ROLE_DESCRIPTION_TREE"));
+		}
+		rm.openEnd();
 
-		return NavigationListRenderer;
+		// Rendering visible groups
+		visibleGroups.forEach(function (group) {
+			group.render(rm, control);
+		});
 
-	}, /* bExport= */ true);
+
+		rm.close("ul");
+	};
+
+	return NavigationListRenderer;
+
+}, /* bExport= */ true);

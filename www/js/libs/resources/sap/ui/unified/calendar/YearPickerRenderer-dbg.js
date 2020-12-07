@@ -1,19 +1,24 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/date/UniversalDate'],
-	function(jQuery, UniversalDate) {
+sap.ui.define(['sap/ui/unified/calendar/CalendarDate', 'sap/ui/core/date/UniversalDate', 'sap/ui/core/InvisibleText'],
+	function(CalendarDate, UniversalDate, InvisibleText) {
 	"use strict";
 
+	/*
+	 * Inside the YearPickerRenderer CalendarDate objects are used. But in the API JS dates are used.
+	 * So conversion must be done on API functions.
+	 */
 
 	/**
 	 * YearPicker renderer.
 	 * @namespace
 	 */
 	var YearPickerRenderer = {
+		apiVersion: 2
 	};
 
 	/**
@@ -23,44 +28,56 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/date/UniversalDate'],
 	 * @param {sap.ui.unified.calendar.YearPicker} oYP an object representation of the control that should be rendered
 	 */
 	YearPickerRenderer.render = function(oRm, oYP){
-
 		var sTooltip = oYP.getTooltip_AsString();
-		var sId = oYP.getId();
-		var oCurrentDate = oYP._getDate();
-		var iCurrentYear = oCurrentDate.getUTCFullYear();
-		var iYears = oYP.getYears();
-		var iColumns = oYP.getColumns();
-		var sWidth = "";
 
-		oRm.write("<div");
-		oRm.writeControlData(oYP);
-		oRm.addClass("sapUiCalYearPicker");
-		oRm.writeClasses();
+		oRm.openStart("div", oYP);
+		oRm.class("sapUiCalYearPicker");
 
 		if (sTooltip) {
-			oRm.writeAttributeEscaped('title', sTooltip);
+			oRm.attr('title', sTooltip);
 		}
 
-		oRm.writeAccessibilityState(oYP, {
+		oRm.accessibilityState(oYP, this.getAccessibilityState(oYP));
+
+		oRm.openEnd(); // div element
+
+		this.renderCells(oRm, oYP);
+
+		oRm.close("div");
+
+	};
+
+	YearPickerRenderer.getAccessibilityState = function(oYP) {
+		return {
 			role: "grid",
 			readonly: "true",
-			multiselectable: "false"
-		});
+			multiselectable: oYP.getIntervalSelection(),
+			roledescription: sap.ui.getCore().getLibraryResourceBundle("sap.ui.unified").getText("YEAR_PICKER"),
+			describedby: oYP._bCalendar ? InvisibleText.getStaticId("sap.ui.unified", "CALENDAR_YEAR_RANGE_PICKER_OPEN_HINT") : ""
+		};
+	};
 
-		oRm.write(">"); // div element
+	YearPickerRenderer.renderCells = function(oRm, oYP) {
 
-		var iYear = iCurrentYear - Math.floor(iYears / 2);
-		var iMinYear = oYP._oMinDate.getUTCFullYear();
-		var iMaxYear = oYP._oMaxDate.getUTCFullYear();
+		var oCurrentDate = new CalendarDate(oYP._getDate(), oYP.getPrimaryCalendarType()),
+			iYears = oYP.getYears(),
+			sId = oYP.getId(),
+			iColumns = oYP.getColumns(),
+			sWidth = "",
+			bEnabled = false,
+			bEnabledCheck = false, // check for disabled years only needed if borders touched
+			oCurrentValidatedDate,
+			bApplySelection,
+			bApplySelectionBetween,
+			mAccProps, sYyyymmdd, i;
 
-		if (iYear >= iMaxYear - iYears) {
-			iYear = iMaxYear - iYears + 1;
-		}else if (iYear < iMinYear) {
-			iYear = iMinYear;
+		oCurrentDate.setYear(oCurrentDate.getYear() - Math.floor(iYears / 2));
+		oCurrentValidatedDate = oYP._checkFirstDate(oCurrentDate);
+
+		if (!oCurrentValidatedDate.isSame(oCurrentDate)) {
+			oCurrentDate = oCurrentValidatedDate;
+			bEnabledCheck = true;
 		}
-
-		var oDate = oYP._newUniversalDate(oCurrentDate);
-		oDate.setUTCFullYear(iYear);
 
 		if (iColumns > 0) {
 			sWidth = ( 100 / iColumns ) + "%";
@@ -68,41 +85,66 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/date/UniversalDate'],
 			sWidth = ( 100 / iYears ) + "%";
 		}
 
-		for ( var i = 0; i < iYears; i++) {
-			var sYyyymmdd = oYP._oFormatYyyymmdd.format(oDate.getJSDate(), true);
+		for (i = 0; i < iYears; i++) {
+			sYyyymmdd = oYP._oFormatYyyymmdd.format(oCurrentDate.toUTCJSDate(), true);
+			mAccProps = {
+				role: "gridcell"
+			};
+			bEnabled = true;
+
+			if (bEnabledCheck) {
+				bEnabled = oYP._checkDateEnabled(oCurrentDate);
+			}
 
 			if (iColumns > 0 && i % iColumns == 0) {
 				// begin of row
-				oRm.write("<div");
-				oRm.writeAccessibilityState(null, {role: "row"});
-				oRm.write(">"); // div element
+				oRm.openStart("div");
+				oRm.accessibilityState(null, {role: "row"});
+				oRm.openEnd(); // div element
 			}
 
-			oRm.write("<div");
-			oRm.writeAttribute("id", sId + "-y" + sYyyymmdd);
-			oRm.addClass("sapUiCalItem");
-			if ( oDate.getUTCFullYear() == iCurrentYear) {
-				oRm.addClass("sapUiCalItemSel");
+			oRm.openStart("div", sId + "-y" + sYyyymmdd);
+			oRm.class("sapUiCalItem");
+
+			bApplySelection = oYP._fnShouldApplySelection(oCurrentDate);
+			bApplySelectionBetween = oYP._fnShouldApplySelectionBetween(oCurrentDate);
+
+			if (bApplySelection) {
+				oRm.class("sapUiCalItemSel");
+				mAccProps["selected"] = true;
 			}
-			oRm.writeAttribute("tabindex", "-1");
-			oRm.writeAttribute("data-sap-year-start", sYyyymmdd);
-			oRm.addStyle("width", sWidth);
-			oRm.writeClasses();
-			oRm.writeStyles();
-			oRm.writeAccessibilityState(null, {role: "gridcell"});
-			oRm.write(">"); // div element
-			oRm.write(oYP._oYearFormat.format(oDate, true)); // to render era in Japanese
-			oRm.write("</div>");
-			oDate.setUTCFullYear(oDate.getUTCFullYear() + 1);
+
+			if (bApplySelectionBetween) {
+				oRm.class("sapUiCalItemSelBetween");
+				mAccProps["selected"] = true;
+			}
+
+			if (!bApplySelection && !bApplySelectionBetween) {
+				mAccProps["selected"] = false;
+			}
+
+			if (!bEnabled) {
+				oRm.class("sapUiCalItemDsbl"); // year disabled
+				mAccProps["disabled"] = true;
+			}
+
+			oRm.attr("tabindex", "-1");
+			oRm.attr("data-sap-year-start", sYyyymmdd);
+			oRm.style("width", sWidth);
+			oRm.accessibilityState(null, mAccProps);
+			oRm.openEnd(); // div element
+
+			// to render era in Japanese, UniversalDate is used, since CalendarDate.toUTCJSDate() will convert the date in Gregorian
+			oRm.text(oYP._oYearFormat.format(UniversalDate.getInstance(oCurrentDate.toUTCJSDate(), oCurrentDate.getCalendarType()))); // to render era in Japanese
+			oRm.close("div");
+
+			oCurrentDate.setYear(oCurrentDate.getYear() + 1);
 
 			if (iColumns > 0 && ((i + 1) % iColumns == 0)) {
 				// end of row
-				oRm.write("</div>");
+				oRm.close("div");
 			}
 		}
-
-		oRm.write("</div>");
-
 	};
 
 	return YearPickerRenderer;

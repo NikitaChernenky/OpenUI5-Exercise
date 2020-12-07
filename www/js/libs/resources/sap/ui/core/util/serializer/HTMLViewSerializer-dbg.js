@@ -1,6 +1,6 @@
 /*
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -17,13 +17,13 @@ sap.ui.define(['sap/ui/base/EventProvider', './Serializer', './delegate/HTML', '
 	 * @param {function} fnGetControlId delegate function which returns the control id
 	 * @param {function} fnGetEventHandlerName delegate function which returns the event handler name
 	 *
-	 * @public
 	 * @class HTMLViewSerializer class.
 	 * @extends sap.ui.base.EventProvider
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 * @alias sap.ui.core.util.serializer.HTMLViewSerializer
-	 * @experimental Since 1.15.1. The HTMLViewSerializer is still under construction, so some implementation details can be changed in future.
+	 * @private
+	 * @ui5-restricted sap.watt com.sap.webide
 	 */
 	var HTMLViewSerializer = EventProvider.extend("sap.ui.core.util.serializer.HTMLViewSerializer", /** @lends sap.ui.core.util.serializer.HTMLViewSerializer.prototype */
 	{
@@ -43,10 +43,10 @@ sap.ui.define(['sap/ui/base/EventProvider', './Serializer', './delegate/HTML', '
 	 * @returns {string} the serialized HTML view.
 	 */
 	HTMLViewSerializer.prototype.serialize = function () {
-
+		var that = this;
 		// a function to understand if to skip aggregations
 		var fnSkipAggregations = function (oControl) {
-			return (oControl instanceof this._oWindow.sap.ui.core.mvc.View);
+			return oControl instanceof this._oWindow.sap.ui.core.mvc.View && oControl !== that._oView;
 		};
 
 		// create serializer

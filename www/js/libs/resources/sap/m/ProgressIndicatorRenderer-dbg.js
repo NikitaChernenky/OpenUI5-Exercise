@@ -1,18 +1,24 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-sap.ui.define(['jquery.sap.global'],
-	function(jQuery) {
+sap.ui.define(["sap/ui/core/library"],
+	function(coreLibrary) {
 	"use strict";
+
+
+	// shortcut for sap.ui.core.ValueState
+	var ValueState = coreLibrary.ValueState;
 
 
 	/**
 	 * ProgressIndicator renderer.
 	 * @namespace
 	 */
-	var ProgressIndicatorRenderer = {};
+	var ProgressIndicatorRenderer = {
+		apiVersion: 2
+	};
 
 	/**
 	 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
@@ -20,111 +26,118 @@ sap.ui.define(['jquery.sap.global'],
 	 * @param {sap.ui.core.RenderManager} oRm the RenderManager that can be used for writing to the render output buffer
 	 * @param {sap.ui.core.Control} oControl an object representation of the control that should be rendered
 	 */
-	ProgressIndicatorRenderer.render = function(oRm, oC) {
-		var fWidthBar = oC.getPercentValue(),
-			iWidthControl = oC.getWidth(),
-			iHeightControl = oC.getHeight(),
-			sTextValue = oC.getDisplayValue(),
-			bShowText = oC.getShowValue(),
-			sState = oC.getState(),
-			sTextDirectionLowerCase = oC.getTextDirection().toLowerCase(),
-			sControlId = oC.getId();
+	ProgressIndicatorRenderer.render = function(oRm, oControl) {
+		var fPercentValue = oControl.getPercentValue(),
+			iWidthControl = oControl.getWidth(),
+			iHeightControl = oControl.getHeight(),
+			aPercentValueClassName = oControl._getCSSClassByPercentValue(fPercentValue),
+			sTextValue = oControl.getDisplayValue(),
+			bShowText = oControl.getShowValue(),
+			sState = oControl.getState(),
+			sTextDirectionLowerCase = oControl.getTextDirection().toLowerCase(),
+			sControlId = oControl.getId();
 
-		// write the HTML into the render manager
-		// PI border
-		oRm.write("<div");
-		oRm.writeControlData(oC);
-		oRm.addClass("sapMPI");
-		oRm.addStyle("width", iWidthControl);
+		// PI container
+		oRm.openStart("div", oControl);
+		oRm.class("sapMPI");
+		oRm.style("width", iWidthControl);
+		aPercentValueClassName.forEach(function (sClass) {
+			oRm.class(sClass);
+		});
 
-		if (fWidthBar > 50) {
-			oRm.addClass("sapMPIValueGreaterHalf");
-		}
+		oRm.style("height", iHeightControl);
 
-		if (iHeightControl) {
-			oRm.addStyle("height", iHeightControl);
-		}
-
-		if (oC.getEnabled()) {
-			oRm.writeAttribute('tabIndex', '-1');
+		if (oControl.getEnabled()) {
+			oRm.attr('tabindex', '-1');
 		} else {
-			oRm.addClass("sapMPIBarDisabled");
+			oRm.class("sapMPIBarDisabled");
 		}
 
-		oRm.writeClasses();
-		oRm.writeStyles();
-		oRm.writeAccessibilityState(oC, {
+		if (oControl.getDisplayOnly()) {
+			oRm.class("sapMPIDisplayOnly");
+		}
+
+		oRm.accessibilityState(oControl, {
 			role: "progressbar",
 			valuemin: 0,
-			valuenow: fWidthBar,
+			valuenow: fPercentValue,
 			valuemax: 100,
-			valuetext: oC._getAriaValueText({
+			valuetext: oControl._getAriaValueText({
 				sText: sTextValue,
-				fPercent: fWidthBar
+				fPercent: fPercentValue
 			})
 		});
 
-		if (oC.getTooltip_AsString()) {
-			oRm.writeAttributeEscaped("title", oC.getTooltip_AsString());
+		if (oControl.getTooltip_AsString()) {
+			oRm.attr("title", oControl.getTooltip_AsString());
 		}
 
-		oRm.write(">"); // div element
+		oRm.openEnd();
 
-		// PI bar
-		oRm.write("<div");
-		oRm.addClass("sapMPIBar");
+		// PI progress bar
+		oRm.openStart("div", sControlId + "-bar");
+		oRm.class("sapMPIBar");
 
 		switch (sState) {
-		case sap.ui.core.ValueState.Warning:
-			oRm.addClass("sapMPIBarCritical");
+		case ValueState.Warning:
+			oRm.class("sapMPIBarCritical");
 			break;
-		case sap.ui.core.ValueState.Error:
-			oRm.addClass("sapMPIBarNegative");
+		case ValueState.Error:
+			oRm.class("sapMPIBarNegative");
 			break;
-		case sap.ui.core.ValueState.Success:
-			oRm.addClass("sapMPIBarPositive");
+		case ValueState.Success:
+			oRm.class("sapMPIBarPositive");
+			break;
+		case ValueState.Information:
+			oRm.class("sapMPIBarInformation");
 			break;
 		default:
-			oRm.addClass("sapMPIBarNeutral");
+			oRm.class("sapMPIBarNeutral");
 			break;
 		}
 
-		oRm.writeClasses();
-		oRm.writeAttribute("id", sControlId + "-bar");
-		oRm.writeAttribute("style", "width:" + fWidthBar + "%");
-		oRm.write(">"); // div element
+		oRm.style("flex-basis", fPercentValue + "%");
+		oRm.openEnd();
 
-		//PI textLeft
+		// PI text in progress bar
 		ProgressIndicatorRenderer._renderDisplayText(oRm, sTextDirectionLowerCase, "Left", sControlId);
 
-		//textvalue is only showed if showValue set
 		if (bShowText) {
-			oRm.writeEscaped(sTextValue);
+			oRm.text(sTextValue);
 		}
 
-		oRm.write("</span>");
-		oRm.write("</div>"); // div element pi bar
+		oRm.close("span");
+		oRm.close("div"); // div element pi bar
 
-		//PI textRight
+		// PI remaining bar div
+		oRm.openStart("div", sControlId + "-remainingBar");
+		oRm.class("sapMPIBarRemaining");
+
+		oRm.openEnd();
+
+		// PI text in remaining bar
 		ProgressIndicatorRenderer._renderDisplayText(oRm, sTextDirectionLowerCase, "Right", sControlId);
 
-		//textvalue is only showed if showValue set
 		if (bShowText) {
-			oRm.writeEscaped(sTextValue);
+			oRm.text(sTextValue);
 		}
 
-		oRm.write("</span>");
-		oRm.write("</div>"); //div element pi text
+		oRm.close("span");
+		oRm.close("div"); // PI Remaining bar div end
+
+		oRm.close("div"); // PI container end
 	};
 
 	ProgressIndicatorRenderer._renderDisplayText = function(oRm, sTextDirectionLowerCase, sTextAlign, oControlId){
-		oRm.write("<span class='sapMPIText sapMPIText" + sTextAlign + "' id='" + oControlId + "-text" + sTextAlign + "'");
+		oRm.openStart("span", oControlId + "-text" + sTextAlign);
+		oRm.class("sapMPIText");
+		oRm.class("sapMPIText" + sTextAlign);
 
 		if (sTextDirectionLowerCase !== "inherit") {
-			oRm.writeAttribute("dir", sTextDirectionLowerCase);
+			oRm.attr("dir", sTextDirectionLowerCase);
 		}
 
-		oRm.write('>');
+		oRm.openEnd();
 	};
 
 	return ProgressIndicatorRenderer;

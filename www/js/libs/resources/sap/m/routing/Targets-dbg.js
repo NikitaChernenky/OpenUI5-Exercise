@@ -1,19 +1,28 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-sap.ui.define(['sap/ui/core/routing/Targets', './TargetHandler', './Target', './async/Targets', './sync/Targets'],
-	function(Targets, TargetHandler, Target, asyncTargets, syncTargets) {
+sap.ui.define(['sap/ui/core/routing/Targets', './TargetHandler', './Target', './async/Targets', './sync/Targets', "sap/base/Log", "sap/base/util/UriParameters"],
+	function(Targets, TargetHandler, Target, asyncTargets, syncTargets, Log, UriParameters) {
 		"use strict";
 
 		/**
-		 * Provides a convenient way for placing views into the correct containers of your application.
-		 * The mobile extension of Targets also handles the triggering of page navigation when the target control is a {@link sap.m.SplitContainer}, a {@link sap.m.NavContainer} or a control which extends one of these.
-		 * Other controls are also allowed, but the extra parameters viewLevel, transition and transitionParameters are ignored and it will behave like {@link sap.ui.core.routing.Targets}.
-		 * When a target is displayed, dialogs will be closed. To change this use {@link #getTargetHandler} and {@link sap.m.routing.TargetHandler#setCloseDialogs}.
+		 * Constructor for a new <code>Targets</code> class.
 		 *
 		 * @class
+		 * Provides a convenient way for placing views into the correct containers of your app.
+		 *
+		 * The mobile extension of <code>Targets</code> also handles the triggering
+		 * of page navigation when the target control is an <code>{@link sap.m.SplitContainer}</code>,
+		 * an <code>{@link sap.m.NavContainer}</code> or a control which extends one of these.
+		 * Other controls are also allowed, but the extra parameters <code>viewLevel</code>,
+		 * <code>transition</code> and <code>transitionParameters</code> are ignored and it behaves
+		 * as <code>{@link sap.ui.core.routing.Targets}</code>.
+		 *
+		 * When a target is displayed, dialogs will be closed. To change this use
+		 * <code>{@link #getTargetHandler}</code> and <code>{@link sap.m.routing.TargetHandler#setCloseDialogs}</code>.
+		 *
 		 * @extends sap.ui.core.routing.Targets
 		 * @param {object} oOptions
 		 * @param {sap.ui.core.routing.Views} oOptions.views the views instance will create the views of all the targets defined, so if 2 targets have the same viewName, the same instance of the view will be displayed.
@@ -61,7 +70,7 @@ sap.ui.define(['sap/ui/core/routing/Targets', './TargetHandler', './Target', './
 		 * The id of the rootView - This should be the id of the view that contains the control with the controlId
 		 * since the control will be retrieved by calling the {@link sap.ui.core.mvc.View#byId} function of the rootView.
 		 * If you are using a component and add the routing.targets <b>do not set this parameter</b>,
-		 * since the component will set the rootView to the view created by the {@link sap.ui.core.UIComponent.html#createContent} function.
+		 * since the component will set the rootView to the view created by the {@link sap.ui.core.UIComponent#createContent} function.
 		 * If you specify the "parent" property of a target, the control will not be searched in the root view but in the view Created by the parent (see parent documentation).
 		 * @param {boolean} [oOptions.config.async=false] @since 1.34 Whether the views which are created through this Targets are loaded asyncly. This option can be set only when the Targets
 		 * is used standalone without the involvement of a Router. Otherwise the async option is inherited from the Router.
@@ -145,9 +154,8 @@ sap.ui.define(['sap/ui/core/routing/Targets', './TargetHandler', './Target', './
 		 * </pre>
 		 *
 		 *
-		 * @param {string} [oOptions.targets.anyName.viewType]
-		 * The type of the view that is going to be created. These are the supported types: {@link sap.ui.core.mvc.ViewType}.
-		 * You always have to provide a viewType except if you are using {@link sap.ui.core.routing.Views#setView}.
+		 * @param {string} [oOptions.targets.anyName.viewType=oOptions.config.viewType] The type of the view that is going to be created. These are the supported types: {@link sap.ui.core.mvc.ViewType}.
+		 * You always have to provide a viewType except if <code>oOptions.config.viewType</code> is set or using {@link sap.ui.core.routing.Views#setView}.
 		 * @param {string} [oOptions.targets.anyName.viewPath]
 		 * A prefix that will be prepended in front of the viewName.<br/>
 		 * <b>Example:</b> viewName is set to "myView" and viewPath is set to "myApp" - the created viewName will be "myApp.myView".
@@ -182,7 +190,7 @@ sap.ui.define(['sap/ui/core/routing/Targets', './TargetHandler', './Target', './
 		 * It's a perfect candidate to lazy load something inside of it.
 		 * <br/>
 		 * <b>Example app structure:</b><br/>
-		 * We have a rootView that is returned by the createContent function of our UIComponent. This view contains a sap.m.App control with the id 'myApp'
+		 * We have a rootView that is returned by the createContent function of our UIComponent. This view contains an sap.m.App control with the id 'myApp'
 		 * <pre>
 		 * <code>
 		 * &lt;View xmlns="sap.m"&gt;
@@ -246,9 +254,9 @@ sap.ui.define(['sap/ui/core/routing/Targets', './TargetHandler', './Target', './
 		 * So a parent will always be created before the target referencing it.
 		 *
 		 *
-		 * @param {integer} [oOptions.targets.anyName.viewLevel]
+		 * @param {int} [oOptions.targets.anyName.viewLevel]
 		 * If you are having an application that has a logical order of views (eg: a create account process, first provide user data, then review and confirm them).
-		 * You always want to always show a backwards transition if a navigation from the confirm to the userData page takes place.
+		 * You always want to show a backwards transition if a navigation from the confirm to the userData page takes place.
 		 * Therefore you may use the viewLevel. The viewLevel has to be an integer. The user data page should have a lower number than the confirm page.
 		 * These levels should represent the user process of your application and they do not have to match the container structure of your Targets.
 		 * If the user navigates between views with the same viewLevel, a forward transition is taken. If you pass a direction into the display function, the viewLevel will be ignored.<br/>
@@ -309,8 +317,8 @@ sap.ui.define(['sap/ui/core/routing/Targets', './TargetHandler', './Target', './
 
 				// temporarily: for checking the url param
 				function checkUrl() {
-					if (jQuery.sap.getUriParameters().get("sap-ui-xx-asyncRouting") === "true") {
-						jQuery.sap.log.warning("Activation of async view loading in routing via url parameter is only temporarily supported and may be removed soon", "MobileTargets");
+					if (UriParameters.fromQuery(window.location.search).get("sap-ui-xx-asyncRouting") === "true") {
+						Log.warning("Activation of async view loading in routing via url parameter is only temporarily supported and may be removed soon", "MobileTargets");
 						return true;
 					}
 					return false;
@@ -362,9 +370,28 @@ sap.ui.define(['sap/ui/core/routing/Targets', './TargetHandler', './Target', './
 			},
 
 			_constructTarget : function (oOptions, oParent) {
-				return new Target(oOptions, this._oViews, oParent, this._oTargetHandler);
+				return new Target(oOptions, this.getViews(), oParent, this._oTargetHandler);
+			},
+
+			/**
+			 * Traverse up from the given target through the parent chain to find out the first target with a defined view level.
+			 * @param {sap.m.routing.Target} oTarget the target from which the traverse starts to find the first defined view level
+			 * @return {number} The view level
+			 * @private
+			 */
+			_getViewLevel : function (oTarget) {
+				var iViewLevel;
+				do {
+					iViewLevel = oTarget._oOptions.viewLevel;
+					if (iViewLevel !== undefined) {
+						return iViewLevel;
+					}
+					oTarget = oTarget._oParent;
+				} while (oTarget);
+
+				return iViewLevel;
 			}
 		});
 
 		return MobileTargets;
-	}, /* bExport= */ true);
+	});

@@ -1,13 +1,27 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.PullToRefresh.
-sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/core/theming/Parameters'],
-	function(jQuery, library, Control, Parameters) {
+sap.ui.define([
+	"sap/ui/thirdparty/jquery",
+	'./library',
+	'sap/ui/core/Control',
+	'sap/ui/Device',
+	'./PullToRefreshRenderer',
+	"sap/ui/events/KeyCodes",
+	"sap/base/security/encodeXML",
+	"sap/ui/core/InvisibleText"
+],
+	function(jQuery, library, Control, Device, PullToRefreshRenderer, KeyCodes, encodeXML, InvisibleText) {
 	"use strict";
+
+
+
+	// shortcut for sap.m.ImageHelper
+	var ImageHelper = library.ImageHelper;
 
 
 
@@ -21,10 +35,13 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	 * PullToRefresh control. Put it as the first control in contents of a scroll container or a scrollable page. Do not place it into a page with disabled scrolling.
 	 * On touch devices it gets hidden by default and when the user pulls down the page far enough, it gets visible and triggers the "refresh" event.
 	 * In non-touch browsers where scrollbars are used for scrolling, it is always visible and triggers the "refresh" event when clicked.
+	 *
+	 * @see {@link topic:fde40159afce478eb488ee4d0f9ebb99 Pull to Refresh}
+	 *
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
@@ -67,25 +84,38 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		}
 	}});
 
+	PullToRefresh.ARIA_F5_REFRESH = "PULL_TO_REFRESH_ARIA_F5";
 
 	PullToRefresh.prototype.init = function(){
-		this._bTouchMode = sap.ui.Device.support.touch && !sap.ui.Device.system.combi || jQuery.sap.simulateMobileOnDesktop;
-
+		// TODO: migration not possible. jQuery.sap.simulateMobileOnDesktop is a testing flag which should not be used.
+		this._bTouchMode = Device.support.touch && !Device.system.combi || jQuery.sap.simulateMobileOnDesktop;
 		this._iState = 0; // 0 - normal; 1 - release to refresh; 2 - loading
-		this.oRb = sap.ui.getCore().getLibraryResourceBundle("sap.m"); // texts
-
+		this._sAriaF5Text = InvisibleText.getStaticId("sap.m", PullToRefresh.ARIA_F5_REFRESH);
 	};
 
 	PullToRefresh.prototype._loadBI = function(){
 		// lazy create a Busy indicator to avoid overhead when invisible at start
 		if (this.getVisible() && !this._oBusyIndicator) {
-			jQuery.sap.require("sap.m.BusyIndicator");
-			this._oBusyIndicator = new sap.m.BusyIndicator({
+			var BusyIndicator = sap.ui.requireSync("sap/m/BusyIndicator");
+			this._oBusyIndicator = new BusyIndicator({
 				size: "1.7rem",
 				design: "auto"
 			});
 			this._oBusyIndicator.setParent(this);
 		}
+	};
+
+	PullToRefresh.prototype._getAriaDescribedByReferences = function(){
+		var sTooltipText = this.getTooltip_AsString(),
+			sDescribedBy = this._sAriaF5Text,
+			sTooltipId;
+
+		if (sTooltipText) {
+			sTooltipId = InvisibleText.getStaticId("sap.m", sTooltipText);
+			sDescribedBy += ' ' + sTooltipId;
+		}
+
+		return sDescribedBy;
 	};
 
 	PullToRefresh.prototype.onBeforeRendering = function(){
@@ -160,7 +190,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		if (_scroller.y > -this._iTopTrigger && this._iState < 1 ) {
 			this.setState(1);
 			_scroller.minScrollY = 0;
-		} else if (_scroller.y < -this._iTopTrigger && this._iState == 1) {
+		} else if (_scroller.y < -this._iTopTrigger && this._iState === 1) {
 			this.setState(0);
 			_scroller.minScrollY = -domRef.offsetHeight;
 		}
@@ -179,7 +209,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	};
 
 	PullToRefresh.prototype.doScrollEnd = function(){
-		if (this._iState == 1) { // if released when ready - load
+		if (this._iState === 1) { // if released when ready - load
 			this.setState(2);
 			this.fireRefresh();
 		}
@@ -191,7 +221,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	*/
 	PullToRefresh.prototype.setState = function(iState){
 
-		if (this._iState == iState) {
+		if (this._iState === iState) {
 			return;
 		}
 
@@ -203,37 +233,28 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 
 		var $this = this.$();
 		var $text = $this.find(".sapMPullDownText");
+		var oResourceBundle = this._getRB();
+
 		switch (iState) {
 			case 0:
 				$this.toggleClass("sapMFlip", false).toggleClass("sapMLoading", false);
-				$text.html(this.oRb.getText(this._bTouchMode ? "PULL2REFRESH_PULLDOWN" : "PULL2REFRESH_REFRESH"));
+				$text.html(oResourceBundle.getText(this._bTouchMode ? "PULL2REFRESH_PULLDOWN" : "PULL2REFRESH_REFRESH"));
 				$this.removeAttr("aria-live");
-				$this.find(".sapMPullDownInfo").html(jQuery.sap.encodeHTML(this.getDescription()));
+				$this.find(".sapMPullDownInfo").html(encodeXML(this.getDescription()));
 				break;
 			case 1:
 				$this.toggleClass("sapMFlip", true);
-				$text.html(this.oRb.getText("PULL2REFRESH_RELEASE"));
+				$text.html(oResourceBundle.getText("PULL2REFRESH_RELEASE"));
 				$this.removeAttr("aria-live");
 				break;
 			case 2:
 				$this.toggleClass("sapMFlip", false).toggleClass("sapMLoading", true);
 				this._oBusyIndicator.setVisible(true);
-				$text.html(this.oRb.getText("PULL2REFRESH_LOADING"));
+				$text.html(oResourceBundle.getText("PULL2REFRESH_LOADING"));
 				$this.attr("aria-live", "assertive");
-				$this.find(".sapMPullDownInfo").html(this._bTouchMode ? this.oRb.getText("PULL2REFRESH_LOADING_LONG") : "");
+				$this.find(".sapMPullDownInfo").html(this._bTouchMode ? oResourceBundle.getText("PULL2REFRESH_LOADING_LONG") : "");
 				break;
 		}
-	};
-
-	/*
-	* Override re-rendering for description
-	* @private
-	*/
-	PullToRefresh.prototype.setDescription = function(sDescription){
-		if (this._oDomRef) {
-			this.$().find(".sapMPullDownInfo").html(jQuery.sap.encodeHTML(sDescription));
-		}
-		return this.setProperty("description", sDescription, true);
 	};
 
 	/*
@@ -248,7 +269,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		};
 		var aCssClasses = ['sapMPullDownCIImg'];
 
-		this._oCustomImage = sap.m.ImageHelper.getImageControl(null, this._oCustomImage, this, mProperties, aCssClasses);
+		this._oCustomImage = ImageHelper.getImageControl(null, this._oCustomImage, this, mProperties, aCssClasses);
 
 		return this._oCustomImage;
 	};
@@ -269,7 +290,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	 * @private
 	 */
 	PullToRefresh.prototype.onkeydown = function(event) {
-		if ( event.which == jQuery.sap.KeyCodes.F5) {
+		if (event.which === KeyCodes.F5) {
 			this.onclick();
 			// do not refresh browser window
 			event.stopPropagation();
@@ -280,7 +301,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	/**
 	 * Handle the enter key event
 	 *
-	 * @param {jQuery.Event} event - the keyboard event.
+	 * @param {jQuery.Event} oEvent The ENTER keyboard event object
 	 * @private
 	 */
 	PullToRefresh.prototype.onsapenter = function(oEvent) {
@@ -293,7 +314,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	/**
 	 * Handle the space key event
 	 *
-	 * @param {jQuery.Event} event - the keyboard event.
+	 * @param {jQuery.Event} oEvent The SPACE keyboard event object
 	 * @private
 	 */
 	PullToRefresh.prototype.onsapspace = function(oEvent) {
@@ -310,7 +331,6 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	/**
 	 * Hides the control and resets it to the normal state. In non-touch environments the control is not hidden.
 	 *
-	 * @type void
 	 * @public
 	 * @ui5-metamodel This method also will be described in the UI5 (legacy) designtime metamodel
 	 */
@@ -321,12 +341,8 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		}
 	};
 
-	/*
-	* Override visibility setter
-	* @private
-	*/
 	PullToRefresh.prototype.setVisible = function(bVisible){
-		if (this.getVisible() == bVisible) {
+		if (this.getVisible() === bVisible) {
 			return this;
 		}
 
@@ -336,7 +352,10 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		return this.setProperty("visible", bVisible);
 	};
 
+	PullToRefresh.prototype._getRB = function(){
+		return sap.ui.getCore().getLibraryResourceBundle("sap.m");
+	};
 
 	return PullToRefresh;
 
-}, /* bExport= */ true);
+});

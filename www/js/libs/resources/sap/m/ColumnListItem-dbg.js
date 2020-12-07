@@ -1,13 +1,30 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.ColumnListItem.
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './library'],
-	function(jQuery, Element, ListItemBase, library) {
+sap.ui.define([
+	"sap/ui/core/Element",
+	"sap/ui/core/library",
+	"./library",
+	"./ListItemBase",
+	"./ColumnListItemRenderer",
+	"sap/ui/thirdparty/jquery",
+	// jQuery custom selectors ":sapFocusable", ":sapTabbable"
+	"sap/ui/dom/jquery/Selectors"
+],
+	function(Element, coreLibrary, library, ListItemBase, ColumnListItemRenderer, jQuery) {
 	"use strict";
+
+
+	// shortcut for sap.m.ListType
+	var ListItemType = library.ListType;
+
+	// shortcut for sap.ui.core.VerticalAlign
+	var VerticalAlign = coreLibrary.VerticalAlign;
+
 
 	/**
 	 * Constructor for a new ColumnListItem.
@@ -25,7 +42,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 	 * @extends sap.m.ListItemBase
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
@@ -43,7 +60,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 			 * <b>Note:</b> <code>vAlign</code> property of <code>sap.m.Column</code> overrides the property for cell vertical alignment if both are set.
 			 * @since 1.20
 			 */
-			vAlign : {type : "sap.ui.core.VerticalAlign", group : "Appearance", defaultValue : sap.ui.core.VerticalAlign.Inherit}
+			vAlign : {type : "sap.ui.core.VerticalAlign", group : "Appearance", defaultValue : VerticalAlign.Inherit}
 		},
 		defaultAggregation : "cells",
 		aggregations : {
@@ -60,13 +77,46 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 	 * TablePopin element that handles own events.
 	 */
 	var TablePopin = Element.extend("sap.m.TablePopin", {
-		onfocusin: function(oEvent) {
+		ontap: function(oEvent) {
+			// prevent the tap event if selection is done within the popin control and mark the event
+			if (oEvent.isMarked() || ListItemBase.detectTextSelection(this.getDomRef())) {
+				return oEvent.stopImmediatePropagation(true);
+			}
+
 			// focus to the main row if there is nothing to focus in the popin
 			if (oEvent.srcControl === this || !jQuery(oEvent.target).is(":sapFocusable")) {
 				this.getParent().focus();
 			}
+		},
+
+		_onMouseEnter: function() {
+			var $this = jQuery(this),
+				$parent = $this.prev();
+
+			if (!$parent.length || !$parent.hasClass("sapMLIBHoverable") || $parent.hasClass("sapMPopinHovered")) {
+				return;
+			}
+
+			$parent.addClass("sapMPopinHovered");
+		},
+
+		_onMouseLeave: function() {
+			var $this = jQuery(this),
+				$parent = $this.prev();
+
+			if (!$parent.length || !$parent.hasClass("sapMLIBHoverable") || !$parent.hasClass("sapMPopinHovered")) {
+				return;
+			}
+
+			$parent.removeClass("sapMPopinHovered");
 		}
 	});
+
+	// defines tag name
+	ColumnListItem.prototype.TagName = "tr";
+
+	// enable the ACC announcement for "not selected"
+	ColumnListItem.prototype._bAnnounceNotSelected = true;
 
 	ColumnListItem.prototype.init = function() {
 		ListItemBase.prototype.init.call(this);
@@ -77,6 +127,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 	ColumnListItem.prototype.onAfterRendering = function() {
 		ListItemBase.prototype.onAfterRendering.call(this);
 		this._checkTypeColumn();
+
+		var oPopin = this.hasPopin();
+		if (oPopin) {
+			this.$Popin().on("mouseenter", oPopin._onMouseEnter).on("mouseleave", oPopin._onMouseLeave);
+		}
 	};
 
 	ColumnListItem.prototype.exit = function() {
@@ -103,12 +158,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 	// returns responsible table control for the item
 	ColumnListItem.prototype.getTable = function() {
 		var oParent = this.getParent();
-		if (oParent instanceof sap.m.Table) {
-			return oParent;
-		}
-
-		// support old list with columns aggregation
-		if (oParent && oParent.getMetadata().getName() == "sap.m.Table") {
+		if (oParent && oParent.isA("sap.m.Table")) {
 			return oParent;
 		}
 	};
@@ -123,7 +173,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 		if (!this._oPopin) {
 			this._oPopin = new TablePopin({
 				id: this.getId() + "-sub"
-			}).addEventDelegate({
+			}).addDelegate({
 				// handle the events of pop-in
 				ontouchstart: this.ontouchstart,
 				ontouchmove: this.ontouchmove,
@@ -131,7 +181,10 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 				ontouchend: this.ontouchend,
 				ontouchcancel: this.ontouchcancel,
 				onsaptabnext: this.onsaptabnext,
-				onsaptabprevious: this.onsaptabprevious
+				onsaptabprevious: this.onsaptabprevious,
+				onsapup: this.onsapup,
+				onsapdown: this.onsapdown,
+				oncontextmenu: this.oncontextmenu
 			}, this).setParent(this, null, true);
 		}
 
@@ -153,7 +206,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 	 * @protected
 	 */
 	ColumnListItem.prototype.hasPopin = function() {
-		return !!(this._oPopin && this.getTable().hasPopin());
+		return this._oPopin;
 	};
 
 	/**
@@ -161,7 +214,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 	 * @protected
 	 */
 	ColumnListItem.prototype.removePopin = function() {
-		this.$Popin().remove();
+		this._oPopin && this.$Popin().remove();
 	};
 
 	/**
@@ -176,16 +229,57 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 		return this.$().add(this.$Popin()).find(":sapTabbable");
 	};
 
+	ColumnListItem.prototype.getAccessibilityType = function(oBundle) {
+		return oBundle.getText("ACC_CTR_TYPE_ROW");
+	};
+
+	ColumnListItem.prototype.getContentAnnouncement = function(oBundle) {
+		var oTable = this.getTable();
+		if (!oTable) {
+			return;
+		}
+
+		var aOutput = [],
+			aCells = this.getCells(),
+			aColumns = oTable.getColumns(true);
+
+		aColumns.forEach(function(oColumn) {
+			var oCell = aCells[oColumn.getInitialOrder()];
+			if (!oCell || !oColumn.getVisible() || (oColumn.isHidden() && !oColumn.isPopin())) {
+				return;
+			}
+
+			var oHeader = oColumn.getHeader();
+			if (oHeader && oHeader.getVisible()) {
+				aOutput.push(ListItemBase.getAccessibilityText(oHeader) + " " + ListItemBase.getAccessibilityText(oCell, true));
+			} else {
+				aOutput.push(ListItemBase.getAccessibilityText(oCell, true));
+			}
+		});
+
+		return aOutput.join(" . ").trim();
+	};
+
 	// update the aria-selected for the cells
 	ColumnListItem.prototype.updateSelectedDOM = function(bSelected, $This) {
 		ListItemBase.prototype.updateSelectedDOM.apply(this, arguments);
-		$This.children().attr("aria-selected", bSelected);
 
 		// update popin as well
 		if (this.hasPopin()) {
 			this.$Popin().attr("aria-selected", bSelected);
-			this.$("subcell").attr("aria-selected", bSelected);
 		}
+	};
+
+	ColumnListItem.prototype.onfocusin = function(oEvent) {
+		if (oEvent.isMarked()) {
+			return;
+		}
+
+		if (oEvent.srcControl === this) {
+			this.$().children(".sapMListTblCellDup").find(":sapTabbable").attr("tabindex", -1);
+		}
+
+		ListItemBase.prototype.onfocusin.apply(this, arguments);
 	};
 
 	// informs the table when item's type column requirement is changed
@@ -202,28 +296,28 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 
 	// determines whether type column for this item is necessary or not
 	ColumnListItem.prototype._needsTypeColumn = function() {
-		var sType = this.getType(),
-			mType = sap.m.ListType;
+		var sType = this.getType();
 
-		return	this.getVisible() && (
-					sType == mType.Detail ||
-					sType == mType.Navigation ||
-					sType == mType.DetailAndActive
-				);
+		return this.getVisible() && (
+			sType == ListItemType.Detail ||
+			sType == ListItemType.Navigation ||
+			sType == ListItemType.DetailAndActive
+		);
 	};
 
 	// Adds cloned header to the local collection
-	sap.m.ColumnListItem.prototype._addClonedHeader = function(oHeader) {
+	ColumnListItem.prototype._addClonedHeader = function(oHeader) {
 		return this._aClonedHeaders.push(oHeader);
 	};
 
 	// Destroys cloned headers that are generated for popin
-	sap.m.ColumnListItem.prototype._destroyClonedHeaders = function() {
-		this._aClonedHeaders.forEach(function(oClone) {
-			oClone.destroy("KeepDom");
-		});
-
-		this._aClonedHeaders = [];
+	ColumnListItem.prototype._destroyClonedHeaders = function() {
+		if (this._aClonedHeaders.length) {
+			this._aClonedHeaders.forEach(function(oClone) {
+				oClone.destroy("KeepDom");
+			});
+			this._aClonedHeaders = [];
+		}
 	};
 
 	// active feedback for pop-in
@@ -245,4 +339,4 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element', './ListItemBase', './
 
 	return ColumnListItem;
 
-}, /* bExport= */ true);
+});

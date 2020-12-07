@@ -1,13 +1,29 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.ObjectNumber.
-sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/core/Renderer'],
-	function(jQuery, library, Control, Renderer) {
+sap.ui.define([
+	'./library',
+	'sap/ui/core/Control',
+	'sap/ui/core/Renderer',
+	'sap/ui/core/library',
+	'./ObjectNumberRenderer'
+],
+	function(library, Control, Renderer, coreLibrary, ObjectNumberRenderer) {
 	"use strict";
+
+
+	// shortcut for sap.ui.core.TextAlign
+	var TextAlign = coreLibrary.TextAlign;
+
+	// shortcut for sap.ui.core.TextDirection
+	var TextDirection = coreLibrary.TextDirection;
+
+	// shortcut for sap.ui.core.ValueState
+	var ValueState = coreLibrary.ValueState;
 
 
 	/**
@@ -19,18 +35,28 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	 * @class
 	 * The ObjectNumber control displays number and number unit properties for an object. The number can be displayed using semantic
 	 * colors to provide additional meaning about the object to the user.
+	 *
+	 *
+	 * With 1.63, large design of the control is supported by setting <code>sapMObjectNumberLarge</code> CSS class to the <code>ObjectNumber</code>.
+	 *
+	 * <b>Note:</b> To fulfill the design guidelines when you are using <code>sapMObjectNumberLarge</code> CSS class set the <code>emphasized</code> property to <code>false</code>.
+	 *
 	 * @extends sap.ui.core.Control
-	 * @version 1.36.8
+	 * @implements sap.ui.core.IFormContent
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
 	 * @since 1.12
 	 * @alias sap.m.ObjectNumber
+	 * @see {@link fiori:https://experience.sap.com/fiori-design-web/object-display-elements/#-object-status Object Number}
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
 	 */
 	var ObjectNumber = Control.extend("sap.m.ObjectNumber", /** @lends sap.m.ObjectNumber.prototype */ { metadata : {
 
+		interfaces : ["sap.ui.core.IFormContent"],
 		library : "sap.m",
+		designtime: "sap/m/designtime/ObjectNumber.designtime",
 		properties : {
 
 			/**
@@ -40,9 +66,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 
 			/**
 			 * Defines the number units qualifier.
-			 * @deprecated Since version 1.16.1.
-			 *
-			 * Replaced by unit property due to the number before unit is redundant.
+			 * @deprecated as of version 1.16.1, replaced by <code>unit</code> property
 			 */
 			numberUnit : {type : "string", group : "Misc", defaultValue : null, deprecated: true},
 
@@ -52,9 +76,9 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			emphasized : {type : "boolean", group : "Appearance", defaultValue : true},
 
 			/**
-			 * Determines the object number's value state. Setting this state will cause the number to be rendered in state-specific colors (only blue-crystal theme).
+			 * Determines the object number's value state. Setting this state will cause the number to be rendered in state-specific colors.
 			 */
-			state : {type : "sap.ui.core.ValueState", group : "Misc", defaultValue : sap.ui.core.ValueState.None},
+			state : {type : "sap.ui.core.ValueState", group : "Misc", defaultValue : ValueState.None},
 
 			/**
 			 * Defines the number units qualifier. If numberUnit and unit are both set, the unit value is used.
@@ -65,61 +89,50 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			/**
 			 * Available options for the number and unit text direction are LTR(left-to-right) and RTL(right-to-left). By default, the control inherits the text direction from its parent control.
 			 */
-			textDirection : {type : "sap.ui.core.TextDirection", group : "Appearance", defaultValue : sap.ui.core.TextDirection.Inherit},
+			textDirection : {type : "sap.ui.core.TextDirection", group : "Appearance", defaultValue : TextDirection.Inherit},
 
 			/**
 			 * Sets the horizontal alignment of the number and unit.
 			 */
-			textAlign : {type : "sap.ui.core.TextAlign", group : "Appearance", defaultValue : sap.ui.core.TextAlign.Begin}
-		}
+			textAlign : {type : "sap.ui.core.TextAlign", group : "Appearance", defaultValue : TextAlign.Begin}
+		},
+		associations : {
+
+			/**
+			 * Association to controls / ids which describe this control (see WAI-ARIA attribute aria-describedby).
+			 */
+			ariaDescribedBy: {type: "sap.ui.core.Control", multiple: true, singularName: "ariaDescribedBy"}
+		},
+		dnd: { draggable: true, droppable: false }
 	}});
 
-	/**
-	 * String to prefix CSS class for number status to be used in.
-	 * controler and renderer
-	 *
-	 * @private
-	 */
-	ObjectNumber.prototype._sCSSPrefixObjNumberStatus = 'sapMObjectNumberStatus';
 
-	/**
-	 * Sets the ObjectNumber's value state.
-	 *
-	 * @override
-	 * @public
-	 * @param {sap.ui.core.ValueState} sState The state to be set to
-	 * @returns {ObjectNumber} this pointer for chaining
-	 */
-	ObjectNumber.prototype.setState = function(sState) {
-		//remove the current value state css class
-		this.$().removeClass(this._sCSSPrefixObjNumberStatus + this.getState());
+	// returns translated text for the state
+	ObjectNumber.prototype._getStateText = function() {
 
-		//do suppress rerendering
-		this.setProperty("state", sState, true);
+		var sState = this.getState(),
+			oRB = sap.ui.getCore().getLibraryResourceBundle("sap.m");
 
-		//now set the new css state class
-		this.$().addClass(this._sCSSPrefixObjNumberStatus + this.getState());
-
-		return this;
+			return oRB.getText("OBJECTNUMBER_ARIA_VALUE_STATE_" + sState.toUpperCase(), [], true);
 	};
 
 	/**
-	 * Sets the text alignment of the control without re-rendering the whole ObjectNumber.
-	 *
-	 * @override
-	 * @public
-	 * @param {sap.ui.core.TextAlign} sAlign The new value
+	 * @see sap.ui.core.Control#getAccessibilityInfo
+	 * @returns {Object} Current accessibility state of the control
+	 * @protected
 	 */
-	ObjectNumber.prototype.setTextAlign = function(sAlign) {
-		var sAlignVal = Renderer.getTextAlign(sAlign, this.getTextDirection());
+	ObjectNumber.prototype.getAccessibilityInfo = function() {
+		var sStateText = "";
 
-		//do suppress rerendering
-		this.setProperty("textAlign", sAlign, true);
+		if (this.getState() !== ValueState.None) {
+			sStateText = this._getStateText();
+		}
 
-		sAlignVal = sAlignVal || sAlign;
-		this.$().css("text-align", sAlign);
+		return {
+			description: (this.getNumber() + " " + this.getUnit() + " " + sStateText).trim()
+		};
 	};
 
 	return ObjectNumber;
 
-}, /* bExport= */ true);
+});

@@ -1,11 +1,11 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', './BarInPageEnabler'],
-	function(jQuery, BarInPageEnabler) {
+sap.ui.define(['./BarInPageEnabler'],
+	function(BarInPageEnabler) {
 	"use strict";
 
 
@@ -13,7 +13,9 @@ sap.ui.define(['jquery.sap.global', './BarInPageEnabler'],
 	 * Toolbar renderer.
 	 * @namespace
 	 */
-	var ToolbarRenderer = {};
+	var ToolbarRenderer = {
+		apiVersion: 2
+	};
 
 	/**
 	 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
@@ -24,51 +26,62 @@ sap.ui.define(['jquery.sap.global', './BarInPageEnabler'],
 	ToolbarRenderer.render = BarInPageEnabler.prototype.render;
 
 	/**
-	 * Add classes attributes and styles to the root tag
+	 * Writes the accessibility state.
+	 * To be overwritten by subclasses.
 	 *
-	 * @param {sap.ui.core.RenderManager} oRM the RenderManager that can be used for writing to the Render-Output-Buffer
-	 * @param {sap.ui.core.Control} oControl an object representation of the control that should be rendered
+	 * @private
+	 * @param {sap.ui.core.RenderManager} oRm The RenderManager that can be used for writing to the render output buffer.
+	 * @param {sap.ui.core.Control} oToolbar An object representation of the control that should be rendered.
 	 */
-	ToolbarRenderer.decorateRootElement = function (rm, oToolbar) {
-		rm.addClass("sapMTB");
+	ToolbarRenderer.writeAccessibilityState = function(oRm, oToolbar) {
+		var oAccInfo = {
+			role: oToolbar._getAccessibilityRole()
+		};
 
-		// ARIA
-		var aContent = oToolbar.getContent();
-		if (oToolbar.getActive() && (!aContent || aContent.length === 0)) {
-			rm.writeAccessibilityState(oToolbar, {
-				role: "button"
-			});
-		} else {
-			oToolbar._writeLandmarkInfo(rm, oToolbar);
-		}
-
-
-		if (!sap.m.Toolbar.hasFlexBoxSupport) {
-			rm.addClass("sapMTBNoFlex");
-		} else if (!sap.m.Toolbar.hasNewFlexBoxSupport) {
-			rm.addClass("sapMTBOldFlex");
-		} else {
-			rm.addClass("sapMTBNewFlex");
+		if (!oToolbar.getAriaLabelledBy().length) {
+			oAccInfo.labelledby = oToolbar.getTitleId();
 		}
 
 		if (oToolbar.getActive()) {
-			rm.addClass("sapMTBActive");
-			rm.writeAttribute("tabindex", "0");
-		} else {
-			rm.addClass("sapMTBInactive");
+			oAccInfo.haspopup = oToolbar.getAriaHasPopup();
 		}
 
-		rm.addClass("sapMTB-" + oToolbar.getActiveDesign() + "-CTX");
+		if (oToolbar._sAriaRoleDescription) {
+			oAccInfo.roledescription = oToolbar._sAriaRoleDescription;
+		}
 
-		var sWidth = oToolbar.getWidth();
-		var sHeight = oToolbar.getHeight();
-		sWidth && rm.addStyle("width", sWidth);
-		sHeight && rm.addStyle("height", sHeight);
+		oRm.accessibilityState(oToolbar, oAccInfo);
+	};
+
+	/**
+	 * Add classes attributes and styles to the root tag
+	 *
+	 * @param {sap.ui.core.RenderManager} oRm the RenderManager that can be used for writing to the Render-Output-Buffer
+	 * @param {sap.ui.core.Control} oToolbar an object representation of the control that should be rendered
+	 */
+	ToolbarRenderer.decorateRootElement = function (oRm, oToolbar) {
+		this.writeAccessibilityState(oRm, oToolbar);
+
+		oRm.class("sapMTB");
+		oRm.class("sapMTBNewFlex");
+
+		if (oToolbar.getActive()) {
+			oRm.class("sapMTBActive");
+			oRm.attr("tabindex", "0");
+		} else {
+			oRm.class("sapMTBInactive");
+		}
+
+		oRm.class("sapMTB" + oToolbar.getStyle());
+		oRm.class("sapMTB-" + oToolbar.getActiveDesign() + "-CTX");
+
+		oRm.style("width", oToolbar.getWidth());
+		oRm.style("height", oToolbar.getHeight());
 	};
 
 	ToolbarRenderer.renderBarContent = function(rm, oToolbar) {
 		oToolbar.getContent().forEach(function(oControl) {
-			sap.m.BarInPageEnabler.addChildClassTo(oControl, oToolbar);
+			BarInPageEnabler.addChildClassTo(oControl, oToolbar);
 			rm.renderControl(oControl);
 		});
 	};

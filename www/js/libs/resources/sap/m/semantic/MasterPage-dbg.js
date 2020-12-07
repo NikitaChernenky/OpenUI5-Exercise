@@ -1,11 +1,15 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define([ 'jquery.sap.global', "sap/m/semantic/SemanticPage", "sap/m/semantic/SemanticPageRenderer", "sap/m/semantic/MultiSelectAction" ], function(jQuery, SemanticPage, SemanticPageRenderer, MultiSelectAction) {
+sap.ui.define(["sap/m/semantic/SemanticPage", "sap/m/semantic/SemanticPageRenderer", "sap/m/library"], function(SemanticPage, SemanticPageRenderer, library) {
 	"use strict";
+
+
+	// shortcut for sap.m.semantic.SemanticRuleSetType
+	var SemanticRuleSetType = library.semantic.SemanticRuleSetType;
 
 
 	/**
@@ -41,7 +45,7 @@ sap.ui.define([ 'jquery.sap.global', "sap/m/semantic/SemanticPage", "sap/m/seman
 	 * @extends sap.m.semantic.SemanticPage
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
@@ -153,7 +157,7 @@ sap.ui.define([ 'jquery.sap.global', "sap/m/semantic/SemanticPage", "sap/m/seman
 				}
 			}
 		},
-		renderer: SemanticPageRenderer.render
+		renderer: SemanticPageRenderer
 	});
 
 	MasterPage.prototype.init = function () {
@@ -162,5 +166,9 @@ sap.ui.define([ 'jquery.sap.global', "sap/m/semantic/SemanticPage", "sap/m/seman
 		this._getPage().getLandmarkInfo().setRootLabel(sap.ui.getCore().getLibraryResourceBundle("sap.m").getText("SEMANTIC_MASTER_PAGE_TITLE"));
 	};
 
+	MasterPage.prototype.getSemanticRuleSet = function() {
+		return SemanticRuleSetType.Classic; //this page should only use the Classic ruleset (no other rules are specified for this page for now)
+	};
+
 	return MasterPage;
-}, /* bExport= */ true);
+});

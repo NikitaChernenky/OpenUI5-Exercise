@@ -1,6 +1,6 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -11,9 +11,7 @@ sap.ui.define(['./Control'],
 
 
 	/**
-	 * @class Helper Class for enhancement of a Control with propagation of enabled property.
-	 *
-	 * <b>This constructor should be applied to the prototype of a control</b>
+	 * <b>This constructor should be applied to the prototype of a control.</b>
 	 *
 	 * Example:
 	 * <code>
@@ -25,7 +23,8 @@ sap.ui.define(['./Control'],
 	 * </code>
 	 *
 	 * @author Daniel Brinkmann
-	 * @version 1.36.8
+	 * @version 1.84.1
+	 * @class Helper Class for enhancement of a Control with propagation of enabled property.
 	 * @param {boolean} [bDefault=true] the value that should be used as default value for the enhancement of the control.
 	 * @param {boolean} [bLegacy=false] whether the introduced property should use the old name 'Enabled'
 	 * @public
@@ -77,7 +76,7 @@ sap.ui.define(['./Control'],
 
 		if (this.setEnabled === undefined) {
 			this.setEnabled = function(bEnabled) {
-				this.setProperty("enabled", bEnabled);
+				return this.setProperty("enabled", bEnabled);
 			};
 
 			this.getMetadata().addPublicMethods('setEnabled');

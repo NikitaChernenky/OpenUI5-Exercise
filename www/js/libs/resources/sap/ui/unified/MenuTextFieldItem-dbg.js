@@ -1,13 +1,35 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.ui.unified.MenuTextFieldItem.
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItemBase', './library'],
-	function(jQuery, ValueStateSupport, MenuItemBase, library) {
+sap.ui.define([
+	'sap/ui/core/ValueStateSupport',
+	'./MenuItemBase',
+	'./library',
+	'sap/ui/core/library',
+	'sap/ui/Device',
+	'sap/base/Log',
+	'sap/ui/events/PseudoEvents',
+	'sap/ui/dom/jquery/cursorPos' // jQuery Plugin "cursorPos"
+],
+	function(
+		ValueStateSupport,
+		MenuItemBase,
+		library,
+		coreLibrary,
+		Device,
+		Log,
+		PseudoEvents
+	) {
 	"use strict";
+
+
+
+	// shortcut for sap.ui.core.ValueState
+	var ValueState = coreLibrary.ValueState;
 
 
 
@@ -23,7 +45,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 	 * @extends sap.ui.unified.MenuItemBase
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 * @since 1.21.0
 	 *
 	 * @constructor
@@ -54,7 +76,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 			/**
 			 * Defines the value state of the text field of the item. This allows you to visualize e.g. warnings or errors.
 			 */
-			valueState : {type : "sap.ui.core.ValueState", group : "Appearance", defaultValue : sap.ui.core.ValueState.None}
+			valueState : {type : "sap.ui.core.ValueState", group : "Appearance", defaultValue : ValueState.None}
 		}
 	}});
 
@@ -81,12 +103,16 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 
 		rm.write("<li ");
 		rm.writeAttribute("class", sClass);
+
+		if (!bIsEnabled) {
+			rm.writeAttribute("disabled", "disabled");
+		}
+
 		rm.writeElementData(oItem);
 
 		// ARIA
 		if (oInfo.bAccessible) {
 			rm.writeAttribute("role", "menuitem");
-			rm.writeAttribute("aria-disabled", !bIsEnabled);
 			rm.writeAttribute("aria-posinset", oInfo.iItemNo);
 			rm.writeAttribute("aria-setsize", oInfo.iTotalItems);
 		}
@@ -117,13 +143,13 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 		if (oInfo.bAccessible) {
 			rm.writeAccessibilityState(oItem, {
 				role: "textbox",
-				disabled: !bIsEnabled,
+				disabled: null, // Prevent aria-disabled as a disabled attribute is enough
 				multiline: false,
 				autocomplete: "none",
 				labelledby: {value: /*oMenu.getId() + "-label " + */itemId + "-lbl", append: true}
 			});
 		}
-		rm.write("></input></div></div>");
+		rm.write("></div></div>");
 
 		// Right border
 		rm.write("<div class=\"sapUiMnuItmR\"></div>");
@@ -137,10 +163,16 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 
 		if (bHovered && oMenu.checkEnabled(this)) {
 			oMenu.closeSubmenu(false, true);
-			this.$("tf").focus();
 		}
 	};
 
+	MenuTextFieldItem.prototype.focus = function(oMenu){
+		if (this.getEnabled() && this.getVisible()) {
+			this.$("tf").get(0).focus();
+		} else {
+			oMenu.focus();
+		}
+	};
 
 	MenuTextFieldItem.prototype.onAfterRendering = function(){
 		this._adaptSizes();
@@ -152,20 +184,17 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 
 
 	MenuTextFieldItem.prototype.onsapup = function(oEvent){
-		this.getParent().focus();
 		this.getParent().onsapprevious(oEvent);
 	};
 
 
 	MenuTextFieldItem.prototype.onsapdown = function(oEvent){
-		this.getParent().focus();
 		this.getParent().onsapnext(oEvent);
 	};
 
 
 	MenuTextFieldItem.prototype.onsaphome = function(oEvent){
 		if (this._checkCursorPosForNav(false)) {
-			this.getParent().focus();
 			this.getParent().onsaphome(oEvent);
 		}
 	};
@@ -173,20 +202,17 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 
 	MenuTextFieldItem.prototype.onsapend = function(oEvent){
 		if (this._checkCursorPosForNav(true)) {
-			this.getParent().focus();
 			this.getParent().onsapend(oEvent);
 		}
 	};
 
 
 	MenuTextFieldItem.prototype.onsappageup = function(oEvent){
-		this.getParent().focus();
 		this.getParent().onsappageup(oEvent);
 	};
 
 
 	MenuTextFieldItem.prototype.onsappagedown = function(oEvent){
-		this.getParent().focus();
 		this.getParent().onsappagedown(oEvent);
 	};
 
@@ -203,14 +229,18 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 
 	MenuTextFieldItem.prototype.onclick = function(oEvent){
 		this.getParent().closeSubmenu(false, true);
-		if (!sap.ui.Device.system.desktop && this.getParent().checkEnabled(this)) {
+		if (!Device.system.desktop && this.getParent().checkEnabled(this)) {
 			this.focus();
 		}
 		oEvent.stopPropagation();
 	};
 
 
-	MenuTextFieldItem.prototype.onsapenter = function(oEvent){
+	MenuTextFieldItem.prototype.onkeyup = function(oEvent){
+		//like sapenter but on keyup -> see Menu.prototype.onkeyup
+		if (!PseudoEvents.events.sapenter.fnCheck(oEvent) && oEvent.key !== "Enter") {
+			return;
+		}
 		var sValue = this.$("tf").val();
 		this.setValue(sValue);
 		this.getParent().selectItem(this);
@@ -227,7 +257,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 	 * @return {sap.ui.unified.Menu}
 	 * @public
 	 * @name sap.ui.unified.MenuTextFieldItem#getSubmenu
-	 * @deprecated The aggregation <code>submenu</code> (inherited from parent class) is not supported for this type of menu item.
+	 * @deprecated As of version 1.21, the aggregation <code>submenu</code> (inherited from parent class) is not supported for this type of menu item.
 	 * @function
 	 */
 
@@ -237,20 +267,20 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 	 * @return {sap.ui.unified.MenuTextFieldItem} <code>this</code> to allow method chaining
 	 * @public
 	 * @name sap.ui.unified.MenuTextFieldItem#destroySubmenu
-	 * @deprecated The aggregation <code>submenu</code> (inherited from parent class) is not supported for this type of menu item.
+	 * @deprecated As of version 1.21, the aggregation <code>submenu</code> (inherited from parent class) is not supported for this type of menu item.
 	 * @function
 	 */
 
 	/**
 	 * The aggregation <code>submenu</code> (inherited from parent class) is not supported for this type of menu item.
 	 *
-	 * @param {sap.ui.unified.Menu} oSubmenu
+	 * @param {sap.ui.unified.Menu} oMenu The menu to which the sap.ui.unified.Submenu should be set
 	 * @return {sap.ui.unified.MenuTextFieldItem} <code>this</code> to allow method chaining
 	 * @public
-	 * @deprecated The aggregation <code>submenu</code> (inherited from parent class) is not supported for this type of menu item.
+	 * @deprecated As of version 1.21, the aggregation <code>submenu</code> (inherited from parent class) is not supported for this type of menu item.
 	 */
 	MenuTextFieldItem.prototype.setSubmenu = function(oMenu){
-		jQuery.sap.log.warning("The aggregation 'submenu' is not supported for this type of menu item.", "", "sap.ui.unified.MenuTextFieldItem");
+		Log.warning("The aggregation 'submenu' is not supported for this type of menu item.", "", "sap.ui.unified.MenuTextFieldItem");
 		return this;
 	};
 
@@ -274,8 +304,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 	MenuTextFieldItem.prototype.setValueState = function(sValueState){
 		this.setProperty("valueState", sValueState, true);
 		var $tf = this.$("tf");
-		$tf.toggleClass("sapUiMnuTfItemTfErr", sValueState == sap.ui.core.ValueState.Error);
-		$tf.toggleClass("sapUiMnuTfItemTfWarn", sValueState == sap.ui.core.ValueState.Warning);
+		$tf.toggleClass("sapUiMnuTfItemTfErr", sValueState == ValueState.Error);
+		$tf.toggleClass("sapUiMnuTfItemTfWarn", sValueState == ValueState.Warning);
 		var sTooltip = ValueStateSupport.enrichTooltip(this, this.getTooltip_AsString());
 		this.$().attr("title", sTooltip ? sTooltip : "");
 		return this;
@@ -325,4 +355,4 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/ValueStateSupport', './MenuItem
 
 	return MenuTextFieldItem;
 
-}, /* bExport= */ true);
+});

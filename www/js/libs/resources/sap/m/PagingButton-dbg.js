@@ -1,26 +1,32 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.PagingButton.
-sap.ui.define(['jquery.sap.global', './Button', 'sap/ui/core/Control', 'sap/ui/core/IconPool'],
-	function (jQuery, Button, Control, IconPool) {
+sap.ui.define([
+	'./Button',
+	'sap/ui/core/Control',
+	'sap/ui/core/IconPool',
+	'./PagingButtonRenderer',
+	"sap/base/Log"
+],
+	function(Button, Control, IconPool, PagingButtonRenderer, Log) {
 		"use strict";
 
 		/**
 		 * Constructor for a new PagingButton.
 		 *
-		 * @param {string} [sId] id for the new control, generated automatically if no id is given
-		 * @param {object} [mSettings] initial settings for the new control
+		 * @param {string} [sId] ID for the new control, generated automatically if no ID is given
+		 * @param {object} [mSettings] Initial settings for the new control
 		 *
 		 * @class
 		 * Enables users to navigate between items/entities.
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.36.8
+		 * @version 1.84.1
 		 *
 		 * @constructor
 		 * @public
@@ -35,16 +41,28 @@ sap.ui.define(['jquery.sap.global', './Button', 'sap/ui/core/Control', 'sap/ui/c
 				properties: {
 
 					/**
-					 * The total count of items/entities that the control navigates through.
-					 * Minimum number of items/entities is 1.
+					 * Determines the total count of items/entities that the control navigates through.
+					 * The minimum number of items/entities is 1.
 					 */
 					count: {type: "int", group: "Data", defaultValue: 1},
 
 					/**
-					 * The current position in the items/entities that the control navigates through. One-based.
-					 * Minimum position number is 1.
+					 * Determines the current position in the items/entities that the control navigates through.
+					 * Starting (minimum) number is 1.
 					 */
-					position: {type: "int", group: "Data", defaultValue: 1}
+					position: {type: "int", group: "Data", defaultValue: 1},
+
+					/**
+					 * Determines the tooltip of the next button.
+					 * @since 1.36
+					 */
+					nextButtonTooltip: {type: "string", group: "Appearance", defaultValue: ""},
+
+					/**
+					 * Determines the tooltip of the previous button.
+					 * @since 1.36
+					 */
+					previousButtonTooltip: {type: "string", group: "Appearance", defaultValue: ""}
 				},
 				aggregations: {
 					previousButton: {type: "sap.m.Button", multiple: false, visibility: "hidden"},
@@ -53,18 +71,18 @@ sap.ui.define(['jquery.sap.global', './Button', 'sap/ui/core/Control', 'sap/ui/c
 				events: {
 
 					/**
-					 * This event is fired when the current position is changed
+					 * Fired when the current position is changed.
 					 */
 					positionChange: {
 						parameters: {
 
 							/**
-							 * The number of the new position. One-based.
+							 * The number of the new position.
 							 */
 							newPosition: {type: "int"},
 
 							/**
-							 * The number of the old position. One-based.
+							 * The number of the old position.
 							 */
 							oldPosition: {type: "int"}
 						}
@@ -72,6 +90,8 @@ sap.ui.define(['jquery.sap.global', './Button', 'sap/ui/core/Control', 'sap/ui/c
 				}
 			}
 		});
+
+		var resourceBundle = sap.ui.getCore().getLibraryResourceBundle("sap.m");
 
 		PagingButton.prototype.init = function () {
 			this._attachPressEvents();
@@ -83,12 +103,14 @@ sap.ui.define(['jquery.sap.global', './Button', 'sap/ui/core/Control', 'sap/ui/c
 		};
 
 		/**
-		 * This function lazily retrieves the nextButton
+		 * Lazily retrieves the <code>nextButton</code>.
+		 * @private
 		 * @returns {sap.m.Button}
 		 */
 		PagingButton.prototype._getNextButton = function () {
 			if (!this.getAggregation("nextButton")) {
-				this.setAggregation("nextButton", new sap.m.Button({
+				this.setAggregation("nextButton", new Button({
+					tooltip: this.getNextButtonTooltip() || resourceBundle.getText("PAGINGBUTTON_NEXT"),
 					icon: IconPool.getIconURI("slim-arrow-down"),
 					enabled: false,
 					id: this.getId() + "-nextButton"
@@ -99,12 +121,14 @@ sap.ui.define(['jquery.sap.global', './Button', 'sap/ui/core/Control', 'sap/ui/c
 		};
 
 		/**
-		 * This function lazily retrieves the previousButton
+		 * Lazily retrieves the <code>previousButton</code>.
+		 * @private
 		 * @returns {sap.m.Button}
 		 */
 		PagingButton.prototype._getPreviousButton = function () {
 			if (!this.getAggregation("previousButton")) {
-				this.setAggregation("previousButton", new sap.m.Button({
+				this.setAggregation("previousButton", new Button({
+					tooltip: this.getPreviousButtonTooltip() || resourceBundle.getText("PAGINGBUTTON_PREVIOUS"),
 					icon: IconPool.getIconURI("slim-arrow-up"),
 					enabled: false,
 					id: this.getId() + "-previousButton"
@@ -114,14 +138,18 @@ sap.ui.define(['jquery.sap.global', './Button', 'sap/ui/core/Control', 'sap/ui/c
 			return this.getAggregation("previousButton");
 		};
 
+		/**
+		 * Attaches the press handlers for both buttons.
+		 * @private
+		 */
 		PagingButton.prototype._attachPressEvents = function () {
 			this._getPreviousButton().attachPress(this._handlePositionChange.bind(this, false));
 			this._getNextButton().attachPress(this._handlePositionChange.bind(this, true));
 		};
 
 		/**
-		 * This function handles the position change
-		 * @params {boolean} bIncrease - Indicates the direction of the change of position
+		 * Handles the position change.
+		 * @param {boolean} bIncrease Indicates the direction of the change of position
 		 * @returns {sap.m.PagingButton} Reference to the control instance for chaining
 		 */
 		PagingButton.prototype._handlePositionChange = function (bIncrease) {
@@ -135,7 +163,7 @@ sap.ui.define(['jquery.sap.global', './Button', 'sap/ui/core/Control', 'sap/ui/c
 		};
 
 		/**
-		 * Sets the appropriate state (enabled/disabled) for the buttons based on the total count / position
+		 * Sets the appropriate state (enabled/disabled) for the buttons based on the total count / position.
 		 * @returns {sap.m.PagingButton} Reference to the control instance for chaining
 		 */
 		PagingButton.prototype._updateButtonState = function () {
@@ -155,14 +183,26 @@ sap.ui.define(['jquery.sap.global', './Button', 'sap/ui/core/Control', 'sap/ui/c
 			return this._validateProperty("count", iCount);
 		};
 
+		PagingButton.prototype.setPreviousButtonTooltip = function (sTooltip) {
+			this._getPreviousButton().setTooltip(sTooltip);
+			return this.setProperty("previousButtonTooltip", sTooltip, true);
+		};
+
+		PagingButton.prototype.setNextButtonTooltip = function (sTooltip) {
+			this._getNextButton().setTooltip(sTooltip);
+			return this.setProperty("nextButtonTooltip", sTooltip, true);
+		};
+
 		/**
-		 * Validate both the count/position properties and ensure they are correct
-		 * @params {string} sProperty - The property to be checked, {number} iValue - The value to be checked
+		 * Validates both the <code>count</code> and <code>position</code>
+		 * properties and ensures they are correct.
+		 * @param {string} sProperty The property to be checked
+		 * @param {number} iValue 	The value to be checked
 		 * @returns {sap.m.PagingButton} Reference to the control instance for chaining
 		 */
 		PagingButton.prototype._validateProperty = function (sProperty, iValue) {
 			if (iValue < 1) {
-				jQuery.sap.log.warning("Property '" + sProperty + "' must be greater or equal to 1", this);
+				Log.warning("Property '" + sProperty + "' must be greater or equal to 1", this);
 				return this;
 			}
 
@@ -170,15 +210,16 @@ sap.ui.define(['jquery.sap.global', './Button', 'sap/ui/core/Control', 'sap/ui/c
 		};
 
 		/**
-		 * Validates the position property to ensure that it's not set higher than the total count
-		 * @params {number} iPosition
+		 * Validates the position property to ensure that it's not set higher than the total count.
+		 * @private
+		 * @param {number} iPosition
 		 * @returns {sap.m.PagingButton} Reference to the control instance for chaining
 		 */
 		PagingButton.prototype._enforceValidPosition = function (iPosition) {
 			var iCount = this.getCount();
 
 			if (iPosition > iCount) {
-				jQuery.sap.log.warning("Property position must be less or equal to the total count");
+				Log.warning("Property position must be less or equal to the total count");
 				this.setPosition(iCount);
 			}
 
@@ -187,4 +228,4 @@ sap.ui.define(['jquery.sap.global', './Button', 'sap/ui/core/Control', 'sap/ui/c
 
 		return PagingButton;
 
-	}, /* bExport= */ true);
+	});

@@ -1,11 +1,15 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides class sap.uxap.BlockBaseMetadata
-sap.ui.define(["jquery.sap.global", "sap/ui/core/ElementMetadata"], function (jQuery, ElementMetadata) {
+sap.ui.define([
+	"sap/ui/core/ElementMetadata",
+	"sap/base/Log",
+	"sap/base/util/isEmptyObject"
+], function (ElementMetadata, Log, isEmptyObject) {
 	"use strict";
 
 
@@ -17,9 +21,10 @@ sap.ui.define(["jquery.sap.global", "sap/ui/core/ElementMetadata"], function (jQ
 	 *
 	 * @class
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 * @since 1.26
 	 * @alias sap.uxap.BlockBaseMetadata
+	 * @extends sap.ui.core.ElementMetadata
 	 */
 	var BlockBaseMetadata = function (sClassName, oClassInfo) {
 
@@ -30,7 +35,8 @@ sap.ui.define(["jquery.sap.global", "sap/ui/core/ElementMetadata"], function (jQ
 	};
 
 	//chain the prototypes
-	BlockBaseMetadata.prototype = jQuery.sap.newObject(ElementMetadata.prototype);
+	BlockBaseMetadata.prototype = Object.create(ElementMetadata.prototype);
+	BlockBaseMetadata.prototype.constructor = BlockBaseMetadata;
 
 	BlockBaseMetadata.prototype.applySettings = function (oClassInfo) {
 		var vRenderer = oClassInfo.hasOwnProperty("renderer") ? (oClassInfo.renderer || "") : undefined;
@@ -50,7 +56,7 @@ sap.ui.define(["jquery.sap.global", "sap/ui/core/ElementMetadata"], function (jQ
 		//if we have not resolved the renderer yet
 		if (!this._sBlockRenderer) {
 			this._sBlockRenderer = this._resolveRendererName();
-			jQuery.sap.log.debug("BlockBaseMetadata :: " + this.getName() + " is renderer with " + this._sBlockRenderer);
+			Log.debug("BlockBaseMetadata :: " + this.getName() + " is renderer with " + this._sBlockRenderer);
 		}
 
 		return this._sBlockRenderer;
@@ -74,7 +80,7 @@ sap.ui.define(["jquery.sap.global", "sap/ui/core/ElementMetadata"], function (jQ
 
 	/**
 	 * return a view from its name
-	 * @param {*} sViewName
+	 * @param {string} sViewName The view name
 	 * @returns {*} view
 	 */
 	BlockBaseMetadata.prototype.getView = function (sViewName) {
@@ -105,7 +111,7 @@ sap.ui.define(["jquery.sap.global", "sap/ui/core/ElementMetadata"], function (jQ
 	 * @returns {*} has views
 	 */
 	BlockBaseMetadata.prototype.hasViews = function () {
-		return !jQuery.isEmptyObject(this._mViews);
+		return !isEmptyObject(this._mViews);
 	};
 
 	return BlockBaseMetadata;

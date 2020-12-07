@@ -1,12 +1,11 @@
 {
-  "_version": "1.2.0",
+  "_version": "1.21.0",
   "sap.app": {
-    "_version": "1.2.0",
     "id": "sap.tnt",
     "type": "library",
     "embeds": [],
     "applicationVersion": {
-      "version": "1.36.8"
+      "version": "1.84.1"
     },
     "title": "SAPUI5 library with responsive controls.",
     "description": "SAPUI5 library with responsive controls.",
@@ -15,7 +14,6 @@
     "offline": true
   },
   "sap.ui": {
-    "_version": "1.1.0",
     "technology": "UI5",
     "supportedThemes": [
       "base",
@@ -23,16 +21,86 @@
     ]
   },
   "sap.ui5": {
-    "_version": "1.1.0",
     "dependencies": {
-      "minUI5Version": "1.36",
+      "minUI5Version": "1.84",
       "libs": {
         "sap.ui.core": {
-          "minVersion": "1.36.8"
+          "minVersion": "1.84.1"
         },
         "sap.m": {
-          "minVersion": "1.36.8"
+          "minVersion": "1.84.1"
         }
+      }
+    },
+    "library": {
+      "i18n": {
+        "bundleUrl": "messagebundle.properties",
+        "supportedLocales": [
+          "",
+          "ar",
+          "bg",
+          "ca",
+          "cs",
+          "da",
+          "de",
+          "el",
+          "en",
+          "en-GB",
+          "en-US-sappsd",
+          "en-US-saprigi",
+          "en-US-saptrc",
+          "es",
+          "et",
+          "fi",
+          "fr",
+          "hi",
+          "hr",
+          "hu",
+          "it",
+          "iw",
+          "ja",
+          "kk",
+          "ko",
+          "lt",
+          "lv",
+          "ms",
+          "nl",
+          "no",
+          "pl",
+          "pt",
+          "rigi",
+          "ro",
+          "ru",
+          "sh",
+          "sk",
+          "sl",
+          "sv",
+          "th",
+          "tr",
+          "uk",
+          "vi",
+          "zh-CN",
+          "zh-TW"
+        ]
+      },
+      "content": {
+        "controls": [
+          "sap.tnt.NavigationList",
+          "sap.tnt.ToolHeaderUtilitySeparator",
+          "sap.tnt.ToolHeader",
+          "sap.tnt.SideNavigation",
+          "sap.tnt.ToolPage",
+          "sap.tnt.InfoLabel"
+        ],
+        "elements": [
+          "sap.tnt.NavigationListItem"
+        ],
+        "types": [
+          "sap.tnt.RenderMode"
+        ],
+        "interfaces": [
+          "sap.tnt.IToolHeader"
+        ]
       }
     }
   }

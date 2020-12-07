@@ -1,11 +1,11 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global'],
-	function(jQuery) {
+sap.ui.define([],
+	function() {
 	"use strict";
 
 
@@ -14,6 +14,7 @@ sap.ui.define(['jquery.sap.global'],
 	 * @namespace
 	 */
 	var CalendarRenderer = {
+		apiVersion: 2
 	};
 
 	/**
@@ -26,52 +27,61 @@ sap.ui.define(['jquery.sap.global'],
 
 		oCal._iMode = 0; // it's rendered always as DayPicker
 
-		var sId = oCal.getId();
-		var sTooltip = oCal.getTooltip_AsString();
-		var aMonths = oCal.getAggregation("month");
+		var sId = oCal.getId(),
+			sTooltip = oCal.getTooltip_AsString(),
+			aMonths = oCal.getAggregation("month"),
+			sWidth = oCal.getWidth(),
+			rb = sap.ui.getCore().getLibraryResourceBundle("sap.ui.unified"),
+			mAccProps = {labelledby: {value: "", append: false}};
 
-		oRm.write("<div");
-		oRm.writeControlData(oCal);
-		oRm.addClass("sapUiCal");
-		if (aMonths.length > 1) {
-			oRm.addClass("sapUiCalMulti");
-		}
-		// This makes the calendar focusable and therefore
-		// the white empty areas can be clicked without closing the calendar
-		// by accident.
-		oRm.writeAttribute("tabindex", "-1");
-
-		var rb = sap.ui.getCore().getLibraryResourceBundle("sap.ui.unified");
-		var mAccProps = {labelledby: {value: "", append: false}}; // render on Month
 		if (oCal._bPoupupMode) {
-			mAccProps["role"] = "dialog";
+			mAccProps.role = "dialog";
+			mAccProps.modal = true;
 		}
-		oRm.writeAccessibilityState(oCal, mAccProps);
+
+		oRm.openStart("div", oCal);
+		oRm.class("sapUiCal");
+		if (aMonths.length > 1) {
+			oRm.class("sapUiCalMulti");
+		}
+
+		oRm.accessibilityState(oCal, mAccProps);
 
 		if (sTooltip) {
-			oRm.writeAttributeEscaped('title', sTooltip);
+			oRm.attr("title", sTooltip);
+		}
+
+		if (sWidth) {
+			oRm.class("sapUiCalWidth");
+			oRm.style("width", sWidth);
 		}
 
 		if (oCal._getSecondaryCalendarType()) {
-			oRm.addClass("sapUiCalSecType");
+			oRm.class("sapUiCalSecType");
 		}
 
 		if (this.addAttributes) {
 			// additional stuff by inherited controls
 			this.addAttributes(oRm, oCal);
 		}
-		oRm.writeClasses();
-		oRm.write(">"); // div element
+		oRm.openEnd(); // div element
 
 		var oHeader = oCal.getAggregation("header");
 		oRm.renderControl(oHeader);
 
-		oRm.write("<div id=\"" + sId + "-content\" class=\"sapUiCalContent\">");
-		for (var i = 0; i < aMonths.length; i++) {
+		var iMonthsCount = aMonths.length;
+		oRm.openStart("div", sId + "-content");
+		oRm.class("sapUiCalContent");
+		oRm.openEnd();
+		for (var i = 0; i < iMonthsCount; i++) {
 			var oMonth = aMonths[i];
 			oRm.renderControl(oMonth);
+			if (iMonthsCount === 2 && i === 0) {
+				oRm.renderControl(oCal.getAggregation("secondMonthHeader"));
+			}
 		}
-		oRm.write("<div id=\"" + sId + "-contentOver\" class=\"sapUiCalContentOver\" style=\"display:none;\"></div>");
+
+		this.renderCalContentOverlay(oRm, oCal, sId);
 
 		if (!oCal._bNamesLengthChecked) {
 			// render MonthPicker to check month names length
@@ -79,16 +89,43 @@ sap.ui.define(['jquery.sap.global'],
 			oRm.renderControl(oMonthPicker);
 		}
 
-		oRm.write("</div>");
+		oRm.close("div");
 
-		oRm.write("<button id=\"" + sId + "-cancel\" class=\"sapUiCalCancel\" tabindex=\"-1\">");
-		oRm.write(rb.getText("CALENDAR_CANCEL"));
-		oRm.write("</button>");
+		//when used in a DatePicker, in mobile there is no cancel button
+		if (!oCal._bSkipCancelButtonRendering) {
+			oRm.openStart("button", sId + "-cancel");
+			oRm.class("sapUiCalCancel");
+			oRm.attr("tabindex", "-1");
+			oRm.openEnd();
+			oRm.text(rb.getText("CALENDAR_CANCEL"));
+			oRm.close("button");
+		}
 
 		// dummy element to catch tabbing in from next element
-		oRm.write("<div id=\"" + sId + "-end\" tabindex=\"0\" style=\"width:0;height:0;position:absolute;right:0;bottom:0;\"></div>");
+		oRm.openStart("div", sId + "-end");
+		oRm.attr("tabindex", "0");
+		oRm.style("position", "absolute");
+		oRm.style("width", "0");
+		oRm.style("height", "0");
+		oRm.style("right", "0");
+		oRm.style("bottom", "0");
+		oRm.openEnd();
+		oRm.close("div");
 
-		oRm.write("</div>");
+		this.renderCalContentAndArrowsOverlay(oRm, oCal, sId);
+
+		oRm.close("div");
+	};
+
+	CalendarRenderer.renderCalContentOverlay = function(oRm, oCal, sId) {
+		oRm.openStart("div", sId + "-contentOver");
+		oRm.class("sapUiCalContentOver");
+		oRm.style("display", "none");
+		oRm.openEnd();
+		oRm.close("div");
+	};
+
+	CalendarRenderer.renderCalContentAndArrowsOverlay = function(oRm, oCal, sId) {
 	};
 
 	return CalendarRenderer;

@@ -1,17 +1,22 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-sap.ui.define(['jquery.sap.global'], function(jQuery) {
+sap.ui.define(['./IconPool', './library', "sap/base/security/encodeCSS"], function(IconPool, library, encodeCSS) {
 	"use strict";
+
+	// shortcut for enum(s)
+	var IconColor = library.IconColor;
 
 	/**
 	 * Font-Icon renderer.
 	 * @namespace
 	 * @alias sap.ui.core.IconRenderer
 	 */
-	var IconRenderer = {};
+	var IconRenderer = {
+		apiVersion: 2
+	};
 
 	/**
 	 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
@@ -21,68 +26,76 @@ sap.ui.define(['jquery.sap.global'], function(jQuery) {
 	 */
 	IconRenderer.render = function(oRm, oControl) {
 		// write the HTML into the render manager
-		var oIconInfo = sap.ui.core.IconPool.getIconInfo(oControl.getSrc()),
+		var vIconInfo = IconPool.getIconInfo(oControl.getSrc(), undefined, "mixed"),
 			sWidth = oControl.getWidth(),
 			sHeight = oControl.getHeight(),
 			sColor = oControl.getColor(),
 			sBackgroundColor = oControl.getBackgroundColor(),
 			sSize = oControl.getSize(),
-			sTooltip = oControl.getTooltip_AsString(),
-			bUseIconTooltip = oControl.getUseIconTooltip(),
-			bNoTabStop = oControl.getNoTabStop();
+			sTitle = oControl._getOutputTitle(vIconInfo),
+			aLabelledBy,
+			oInvisibleText,
+			oAccAttributes,
+			bIconInfo = false;
 
-		oRm.write("<span");
-		oRm.writeControlData(oControl);
-		oRm.writeAccessibilityState(oControl, oControl._getAccessibilityAttributes());
+		if (vIconInfo instanceof Promise) {
+			// if the icon info is still being loaded,
+			// an invalidation is triggered after the icon info is available
+			vIconInfo.then(oControl.invalidate.bind(oControl));
+		} else if (vIconInfo) {
+			// render icon info in renderer
+			bIconInfo = true;
+			aLabelledBy = oControl.getAriaLabelledBy();
 
-		if (sTooltip || (bUseIconTooltip && oIconInfo)) {
-			oRm.writeAttributeEscaped("title", sTooltip || oIconInfo.text || oIconInfo.name);
+			oAccAttributes = oControl._getAccessibilityAttributes(vIconInfo);
+			// oInvisibleText must be retrieved after calling _getAccessibilityAttributes
+			// because it may be created within the function
+			oInvisibleText = oControl.getAggregation("_invisibleText");
 		}
 
-		if (oControl.hasListeners("press") && !bNoTabStop) {
-			oRm.writeAttribute("tabindex", 0);
+		oRm.openStart("span", oControl);
+		oRm.class("sapUiIcon");
+
+		if (bIconInfo) {
+			oRm.accessibilityState(oControl, oAccAttributes);
+			oRm.attr("data-sap-ui-icon-content", vIconInfo.content);
+			oRm.style("font-family", "'" + encodeCSS(vIconInfo.fontFamily) + "'");
+			if (!vIconInfo.suppressMirroring) {
+				oRm.class("sapUiIconMirrorInRTL");
+			}
 		}
 
-		if (oIconInfo) {
-			oRm.writeAttributeEscaped("data-sap-ui-icon-content", oIconInfo.content);
-			oRm.addStyle("font-family", "'" + jQuery.sap.encodeHTML(oIconInfo.fontFamily) + "'");
-		}
-
-		if (sWidth) {
-			oRm.addStyle("width", sWidth);
-		}
-
-		if (sHeight) {
-			oRm.addStyle("height", sHeight);
-			oRm.addStyle("line-height", sHeight);
-		}
-
-		if (!(sColor in sap.ui.core.IconColor)) {
-			oRm.addStyle("color", jQuery.sap.encodeHTML(sColor));
-		}
-
-		if (!(sBackgroundColor in sap.ui.core.IconColor)) {
-			oRm.addStyle("background-color", jQuery.sap.encodeHTML(sBackgroundColor));
-		}
-
-		if (sSize) {
-			oRm.addStyle("font-size", sSize);
-		}
-
-		oRm.addClass("sapUiIcon");
-
-		if (oIconInfo && !oIconInfo.suppressMirroring) {
-			oRm.addClass("sapUiIconMirrorInRTL");
+		if (sTitle) {
+			oRm.attr("title", sTitle);
 		}
 
 		if (oControl.hasListeners("press")) {
-			oRm.addClass("sapUiIconPointer");
+			oRm.class("sapUiIconPointer");
+			if (!oControl.getNoTabStop()) {
+				oRm.attr("tabindex", "0");
+			}
 		}
 
-		oRm.writeClasses();
-		oRm.writeStyles();
+		oRm.style("width", sWidth);
+		oRm.style("height", sHeight);
+		oRm.style("line-height", sHeight);
+		oRm.style("font-size", sSize);
 
-		oRm.write("></span>");
+		if (sColor && !(sColor in IconColor)) {
+			oRm.style("color", sColor);
+		}
+
+		if (sBackgroundColor && !(sBackgroundColor in IconColor)) {
+			oRm.style("background-color", sBackgroundColor);
+		}
+
+		oRm.openEnd();
+
+		if (aLabelledBy && aLabelledBy.length && oInvisibleText) {
+			oRm.renderControl(oInvisibleText);
+		}
+
+		oRm.close("span");
 	};
 
 	return IconRenderer;

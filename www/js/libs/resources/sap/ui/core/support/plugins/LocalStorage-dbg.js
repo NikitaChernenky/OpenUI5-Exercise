@@ -1,12 +1,12 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides class sap.ui.core.support.plugins.LocalStorage (support plugin for functionality related to localStorage that should be executed on the app side)
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
-	function(jQuery, Plugin) {
+sap.ui.define(['sap/ui/core/support/Plugin', "sap/base/Log"],
+	function(Plugin, Log) {
 	"use strict";
 
 
@@ -14,10 +14,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 		 * Creates an instance of sap.ui.core.support.plugins.LocalStorage.
 		 * @class This class represents the LocalStorage plugin for the support tool functionality of UI5. This class is internal and all its functions must not be used by an application.
 		 *
-		 * @abstract
 		 * @extends sap.ui.core.support.Plugin
-		 * @version 1.36.8
-		 * @constructor
+		 * @version 1.84.1
 		 * @private
 		 * @alias sap.ui.core.support.plugins.LocalStorage
 		 */
@@ -25,15 +23,14 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 			constructor : function(oSupportStub) {
 				Plugin.apply(this, ["sapUiSupportLocalStorage", "", oSupportStub]);
 
-				if (this.isToolPlugin()) {
-					throw Error(); // only for application side
-				}
-
 				this._oStub = oSupportStub;
 				this._aEventIds = [this.getId() + "GetItem", this.getId() + "SetItem"];
 			}
 		});
 
+		LocalStorage.prototype.isToolPlugin = function(){
+			return false;
+		};
 
 		/**
 		 * Handler for sapUiSupportLocalStorageGetItem event
@@ -54,7 +51,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 					sValue = "";
 				}
 			} catch (e) {
-				jQuery.sap.log.error("Could not get item '" + sItemId + "' from localStorage: " + e.message);
+				Log.error("Could not get item '" + sItemId + "' from localStorage: " + e.message);
 				sValue = "";
 			}
 
@@ -78,7 +75,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 			try { // Necessary for FF when Cookies are disabled
 				window.localStorage.setItem(sItemId, sValue);
 			} catch (e) {
-				jQuery.sap.log.error("Could not write to localStorage: '" + sItemId + "' : '" + sValue + "': " + e.message);
+				Log.error("Could not write to localStorage: '" + sItemId + "' : '" + sValue + "': " + e.message);
 			}
 		};
 

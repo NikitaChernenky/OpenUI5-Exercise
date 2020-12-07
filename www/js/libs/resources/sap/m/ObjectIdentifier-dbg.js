@@ -1,13 +1,40 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.ObjectIdentifier.
-sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/core/IconPool'],
-	function(jQuery, library, Control, IconPool) {
+sap.ui.define([
+	'./library',
+	'./Link',
+	'./Text',
+	'sap/ui/core/Control',
+	'sap/ui/core/IconPool',
+	'sap/ui/core/InvisibleText',
+	'sap/ui/core/library',
+	'sap/ui/Device',
+	'sap/ui/base/ManagedObject',
+	'./ObjectIdentifierRenderer'
+],
+function(
+	library,
+	Link,
+	Text,
+	Control,
+	IconPool,
+	InvisibleText,
+	coreLibrary,
+	Device,
+	ManagedObject,
+	ObjectIdentifierRenderer
+	) {
 	"use strict";
+
+
+
+	// shortcut for sap.ui.core.TextDirection
+	var TextDirection = coreLibrary.TextDirection;
 
 
 
@@ -19,18 +46,22 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	 *
 	 * @class
 	 * The ObjectIdentifier is a display control that enables the user to easily identify a specific object. The ObjectIdentifier title is the key identifier of the object and additional text and icons can be used to further distinguish it from other objects.
+	 *
+         * <b>Note:</b> This control should not be used with {@link sap.m.Label} or in Forms along with {@link sap.m.Label}.
 	 * @extends sap.ui.core.Control
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
 	 * @constructor
 	 * @public
 	 * @since 1.12
 	 * @alias sap.m.ObjectIdentifier
+	 * @see {@link fiori:https://experience.sap.com/fiori-design-web/object-display-elements/#-object-status Object Identifier}
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
 	 */
 	var ObjectIdentifier = Control.extend("sap.m.ObjectIdentifier", /** @lends sap.m.ObjectIdentifier.prototype */ { metadata : {
 
 		library : "sap.m",
+		designtime: "sap/m/designtime/ObjectIdentifier.designtime",
 		properties : {
 
 			/**
@@ -45,22 +76,19 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 
 			/**
 			 * Indicates whether or not the notes icon is displayed.
-			 * @deprecated Since version 1.24.0.
-			 * Will be replaced in the future by a more generic mechanism.
+			 * @deprecated as of version 1.24.0. There is no replacement for the moment.
 			 */
 			badgeNotes : {type : "boolean", group : "Misc", defaultValue : null, deprecated: true},
 
 			/**
 			 * Indicates whether or not the address book icon is displayed.
-			 * @deprecated Since version 1.24.0.
-			 * Will be replaced in the future by a more generic mechanism.
+			 * @deprecated as of version 1.24.0. There is no replacement for the moment.
 			 */
 			badgePeople : {type : "boolean", group : "Misc", defaultValue : null, deprecated: true},
 
 			/**
 			 * Indicates whether or not the attachments icon is displayed.
-			 * @deprecated Since version 1.24.0.
-			 * Will be replaced in the future by a more generic mechanism.
+			 * @deprecated as of version 1.24.0. There is no replacement for the moment.
 			 */
 			badgeAttachments : {type : "boolean", group : "Misc", defaultValue : null, deprecated: true},
 
@@ -79,7 +107,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			 * Specifies the element's text directionality with enumerated options. By default, the control inherits text direction from the DOM.
 			 * @since 1.28.0
 			 */
-			textDirection : {type : "sap.ui.core.TextDirection", group : "Appearance", defaultValue : sap.ui.core.TextDirection.Inherit}
+			textDirection : {type : "sap.ui.core.TextDirection", group : "Appearance", defaultValue : TextDirection.Inherit}
 		},
 		aggregations : {
 
@@ -118,8 +146,23 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			 * Association to controls / IDs, which label this control (see WAI-ARIA attribute aria-labelledby).
 			 */
 			ariaLabelledBy: {type: "sap.ui.core.Control", multiple: true, singularName: "ariaLabelledBy"}
-		}
+		},
+		dnd: { draggable: true, droppable: false }
 	}});
+
+
+	/**
+	 * Initializes the control
+	 *
+	 * @private
+	 */
+	ObjectIdentifier.prototype.init = function() {
+		var oLibraryResourceBundle = sap.ui.getCore().getLibraryResourceBundle("sap.m");
+
+		if (sap.ui.getCore().getConfiguration().getAccessibility()) {
+			ObjectIdentifier.OI_ARIA_ROLE = oLibraryResourceBundle.getText("OI_ARIA_ROLE");
+		}
+	};
 
 	/**
 	 * Called when the control is destroyed.
@@ -142,16 +185,11 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			this._notesIcon.destroy();
 			this._notesIcon = null;
 		}
-
-		if (this._oAriaInfoTextControl) {
-			this._oAriaInfoTextControl.destroy();
-			this._oAriaInfoTextControl = null;
-		}
 	};
 
 	/**
 	 * Lazy loads attachments icon.
-	 *
+	 * @returns {object} The attachments icon
 	 * @private
 	 */
 	ObjectIdentifier.prototype._getAttachmentsIcon = function() {
@@ -165,7 +203,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 
 	/**
 	 * Lazy loads people icon.
-	 *
+	 * @returns {object} The people icon
 	 * @private
 	 */
 	ObjectIdentifier.prototype._getPeopleIcon = function() {
@@ -179,7 +217,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 
 	/**
 	 * Lazy loads notes icon.
-	 *
+	 * @returns {object} The notes icon
 	 * @private
 	 */
 	ObjectIdentifier.prototype._getNotesIcon = function() {
@@ -193,12 +231,14 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 
 	/**
 	 * Creates icon image.
-	 *
+	 * @param {string} sURI The URL of the icon image
+	 * @param {string} sImageId The ID of the icon image
+	 * @returns {object} The icon image
 	 * @private
 	 */
 	ObjectIdentifier.prototype._getIcon = function(sURI, sImageId) {
 
-		var sSize = sap.ui.Device.system.phone ? "1em" : "1em";
+		var sSize = Device.system.phone ? "1em" : "1em";
 		var oImage;
 
 		oImage = this._icon || IconPool.createControlByURI({
@@ -215,58 +255,39 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 
 	/**
 	 * Gets the proper control for the title.
-	 *
+	 * @returns {sap.m.Control} The control for the title
 	 * @private
 	 */
 	ObjectIdentifier.prototype._getTitleControl = function() {
-
 		var oTitleControl = this.getAggregation("_titleControl"),
-			bIsTitleActive;
+			sId = this.getId(),
+			sTitle = ManagedObject.escapeSettingsValue(this.getProperty("title"));
 
 		if (!oTitleControl) {
-			this._createAriaInfoTextControl();
 			// Lazy initialization
 			if (this.getProperty("titleActive")) {
-				oTitleControl = new sap.m.Link({
-					text: this.getProperty("title"),
-					//Associate with the hidden sap.m.Text
-					ariaLabelledBy: this._oAriaInfoTextControl
+				oTitleControl = new Link({
+					id : sId + "-link",
+					text: sTitle,
+					//Add a custom hidden role "ObjectIdentifier" with hidden text
+					ariaLabelledBy: InvisibleText.getStaticId("sap.m", "OI_ARIA_ROLE")
 				});
+				oTitleControl.addAssociation("ariaLabelledBy", sId + "-text", true);
 			} else {
-				oTitleControl = new sap.m.Text({
-					text: this.getProperty("title")
+				oTitleControl = new Text({
+					id : sId + "-txt",
+					text: sTitle
 				});
 			}
-			this.setAggregation("_titleControl", oTitleControl);
-		} else {
-			// Update the title control if necessary
-			bIsTitleActive = this.getProperty("titleActive");
-
-			if (bIsTitleActive && oTitleControl instanceof sap.m.Text) {
-				this.destroyAggregation("_titleControl", true);
-				oTitleControl = new sap.m.Link({
-					text: this.getProperty("title"),
-					//Associate with the hidden sap.m.Text
-					ariaLabelledBy: this._oAriaInfoTextControl
-				});
-				this.setAggregation("_titleControl", oTitleControl);
-			} else if (!bIsTitleActive && oTitleControl instanceof sap.m.Link) {
-				this.destroyAggregation("_titleControl", true);
-				oTitleControl = new sap.m.Text({
-					text: this.getProperty("title")
-				});
-				this.setAggregation("_titleControl", oTitleControl);
-			}
+			this.setAggregation("_titleControl", oTitleControl, true);
 		}
-
-		oTitleControl.setVisible(!!this.getTitle());
 
 		return oTitleControl;
 	};
 
 	/**
 	 * Lazy loads _textControl aggregation.
-	 *
+	 * @returns {sap.m.Control} The control for the text
 	 * @private
 	 */
 	ObjectIdentifier.prototype._getTextControl = function() {
@@ -274,33 +295,17 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		var oTextControl = this.getAggregation("_textControl");
 
 		if (!oTextControl) {
-			oTextControl = new sap.m.Text({
-				text: this.getProperty("text")
+			oTextControl = new Text({
+				text: ManagedObject.escapeSettingsValue(this.getProperty("text"))
 			});
 			this.setAggregation("_textControl", oTextControl, true);
 		}
 
 		oTextControl.setTextDirection(this.getTextDirection());
-		oTextControl.setVisible(!!this.getText());
 
 		return oTextControl;
 	};
 
-	/**
-	 * Updates the text of the title control and re-renders it.
-	 * If titleActive = true, a Link control is rendered,
-	 * otherwise a Text control will be rendered.
-	 *
-	 * @private
-	 */
-	ObjectIdentifier.prototype._rerenderTitle = function() {
-		var oTitleControl = this._getTitleControl();
-		oTitleControl.setProperty("text", this.getProperty("title"), true);
-		var oRm = sap.ui.getCore().createRenderManager();
-		oRm.renderControl(oTitleControl);
-		oRm.flush(this.$("title")[0]);
-		oRm.destroy();
-	};
 
 	/**
 	 * Sets the title.
@@ -310,16 +315,11 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	 * @returns {sap.m.ObjectIdentifier} this to allow method chaining
 	 */
 	ObjectIdentifier.prototype.setTitle = function (sTitle) {
-		//always suppress rerendering because title div is rendered
-		//if text is empty or not
-		var oTitleControl = this._getTitleControl();
-		oTitleControl.setProperty("text", sTitle, false);
-		oTitleControl.setVisible(!!sTitle);
-		this.setProperty("title", sTitle, true);
-		this.$("text").toggleClass("sapMObjectIdentifierTextBellow",
-				!!this.getProperty("text") && !!this.getProperty("title"));
+		if (sTitle) {
+			this._getTitleControl().setProperty("text", sTitle);
+		}
 
-		return this;
+		return this.setProperty("title", sTitle);
 	};
 
 	/**
@@ -329,17 +329,12 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	 * @param {string} sText New value for property text
 	 * @returns {sap.m.ObjectIdentifier} this to allow method chaining
 	 */
-	ObjectIdentifier.prototype.setText = function (sText) {
-		//always suppress rerendering because text div is rendered
-		//if text is empty or not
-		this.setProperty("text", sText, true);
+	ObjectIdentifier.prototype.setText = function(sText) {
+		if (sText) {
+			this._getTextControl().setProperty("text", sText);
+		}
 
-		var oTextControl = this._getTextControl();
-		oTextControl.setProperty("text", sText, false);
-		this.$("text").toggleClass("sapMObjectIdentifierTextBellow",
-				!!this.getProperty("text") && !!this.getProperty("title"));
-
-		return this;
+		return this.setProperty("text", sText);
 	};
 
 	/**
@@ -350,23 +345,22 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	 * @returns {sap.m.ObjectIdentifier} this to allow method chaining
 	 */
 	ObjectIdentifier.prototype.setTitleActive = function(bValue) {
-		var bPrevValue = this.getProperty("titleActive");
+		var bPrevValue = this.getTitleActive();
 
-		// Return if the new value is the same as the old one
+		this.setProperty("titleActive", bValue);
+
 		if (bPrevValue != bValue) {
-			this.setProperty("titleActive", bValue, true);
-			// If the title is already rendered, then the title control has to be updated and rerendered
-			if (this.$("title").children().length > 0) {
-				this._rerenderTitle();
-			}
+			this.destroyAggregation("_titleControl");
+			this._getTitleControl();
 		}
+
 		return this;
 	};
 
 	/**
 	 * Function is called when ObjectIdentifier's title is triggered.
 	 *
-	 * @param {jQuery.Event} oEvent
+	 * @param {jQuery.Event} oEvent The fired event
 	 * @private
 	 */
 	ObjectIdentifier.prototype._handlePress = function(oEvent) {
@@ -375,13 +369,16 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			this.fireTitlePress({
 				domRef: oClickedItem
 			});
+
+			// mark the event that it is handled by the control
+			oEvent.setMarked();
 		}
 	};
 
 	/**
 	 * Event handler called when the enter key is pressed.
 	 *
-	 * @param {jQuery.Event} oEvent
+	 * @param {jQuery.Event} oEvent The fired event
 	 * @private
 	 */
 	ObjectIdentifier.prototype.onsapenter = function(oEvent) {
@@ -391,7 +388,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	/**
 	 * Event handler called when the space key is pressed.
 	 *
-	 * @param {jQuery.Event} oEvent
+	 * @param {jQuery.Event} oEvent The fired event
 	 * @private
 	 */
 	ObjectIdentifier.prototype.onsapspace = function(oEvent) {
@@ -401,49 +398,67 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	/**
 	 * Event handler called when the title is clicked/taped.
 	 *
-	 * @param {jQuery.Event} oEvent
+	 * @param {jQuery.Event} oEvent The fired event
 	 * @private
 	 */
 	ObjectIdentifier.prototype.ontap = function(oEvent) {
 		ObjectIdentifier.prototype._handlePress.apply(this, arguments);
 	};
 
-	/**
-	 * Creates additional aria-labelledby info text to the control.
-	 * @returns {sap.m.Text}
-	 * @private
-	 */
-	ObjectIdentifier.prototype._createAriaInfoTextControl = function () {
-		var oAriaInfoTextControl;
-		//Check if ObjectIdentifier has attached controls' ids to its ariaLabelledBy association
-		var aAriaLabelledAssociation = this.getAssociation("ariaLabelledBy");
-		if (aAriaLabelledAssociation && aAriaLabelledAssociation instanceof Array && aAriaLabelledAssociation.length > 0) {
-			var sResultIds = [];
-			var sResultTexts = [];
 
-			aAriaLabelledAssociation.forEach(function (sId) {
-				var oControl = sap.ui.getCore().byId(sId);
-				if (oControl) {
-					sResultIds.push(sId);
-					var sControlText = oControl.getText();
-					if (sControlText) {
-						sResultTexts.push(sControlText);
-					}
-				}
-			});
+	ObjectIdentifier.prototype.addAssociation = function(sAssociationName, sId, bSuppressInvalidate) {
+		var oTitle = this.getAggregation("_titleControl");
 
-			oAriaInfoTextControl = new sap.m.Text(this.getId() + "-sapSRH", {text: "Object Identifier " + sResultTexts.join(" ")}).addStyleClass("sapUiInvisibleText");
-		} else {
-			oAriaInfoTextControl = new sap.m.Text(this.getId() + "-sapSRH", {text: "Object Identifier"}).addStyleClass("sapUiInvisibleText");
+		if (sAssociationName === "ariaLabelledBy") {
+			if (this.getTitleActive() && oTitle instanceof sap.m.Link) {
+				oTitle.addAssociation("ariaLabelledBy", sId, true);
+			}
 		}
 
-		//Store it ot private property for later usage
-		this._oAriaInfoTextControl = oAriaInfoTextControl;
-
-		return oAriaInfoTextControl;
+		return Control.prototype.addAssociation.apply(this, arguments);
 	};
 
 
+	ObjectIdentifier.prototype.removeAssociation = function(sAssociationName, vObject, bSuppressInvalidate) {
+		var oTitle = this.getAggregation("_titleControl");
+
+		if (sAssociationName === "ariaLabelledBy") {
+			if (this.getTitleActive() && oTitle instanceof sap.m.Link) {
+				oTitle.removeAssociation("ariaLabelledBy", vObject, true);
+			}
+		}
+
+		return Control.prototype.removeAssociation.apply(this, arguments);
+	};
+
+	/**
+	 * @see sap.ui.core.Control#getAccessibilityInfo
+	 * @returns {Object} Current accessibility state of the control
+	 * @protected
+	 */
+	ObjectIdentifier.prototype.getAccessibilityInfo = function() {
+		// first get accessibility info from the title control, which can be Text or Link
+		var oTitleInfo = this.getAggregation("_titleControl")
+			? this.getAggregation("_titleControl").getAccessibilityInfo()
+			: {
+				type: "",
+				description: ""
+			},
+			oType = (ObjectIdentifier.OI_ARIA_ROLE + " " + (oTitleInfo.type || "")).trim();
+
+		// add ObjectIdentifier type to the title type
+		oTitleInfo.type = oType;
+		// add ObjectIdentifier text to the description of the title
+		oTitleInfo.description = oTitleInfo.description + " " + this.getText();
+
+		// return the modified Object containing all needed information about the control
+		return oTitleInfo;
+	};
+
+	ObjectIdentifier.prototype._hasTopRow = function() {
+		return this.getTitle() || this.getBadgeNotes() || this.getBadgePeople() || this.getBadgeAttachments();
+	};
+
 	return ObjectIdentifier;
 
-}, /* bExport= */ true);
+});

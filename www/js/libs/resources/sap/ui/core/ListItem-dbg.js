@@ -1,6 +1,6 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
@@ -17,14 +17,14 @@ sap.ui.define(['./Item', './library'],
 	 * @param {object} [mSettings] initial settings for the new control
 	 *
 	 * @class
-	 * An item that is used in lists or list-similar controls such as DropdownBox, for example.
+	 * An item that is used in list controls, such as <code>DropdownBox</code>.
+	 *
 	 * The element foresees the usage of additional texts displayed in a second column.
 	 * @extends sap.ui.core.Item
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
-	 * @constructor
 	 * @public
 	 * @alias sap.ui.core.ListItem
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
@@ -36,7 +36,7 @@ sap.ui.define(['./Item', './library'],
 
 			/**
 			 * The icon belonging to this list item instance.
-			 * This can be an URI to an image or an icon font URI.
+			 * This can be a URI to an image or an icon font URI.
 			 */
 			icon : {type : "string", group : "Appearance", defaultValue : null},
 

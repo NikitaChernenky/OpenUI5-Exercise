@@ -1,16 +1,23 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.ui.core.HTML.
-sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library'],
-	function(jQuery, Control, RenderManager, library) {
+sap.ui.define([
+	'sap/ui/thirdparty/jquery',
+	"sap/base/Log",
+	'./Control',
+	'./RenderManager',
+	"./HTMLRenderer",
+	"sap/base/security/sanitizeHTML"
+],
+	function(jQuery, Log, Control, RenderManager, HTMLRenderer, sanitizeHTML) {
 	"use strict";
 
 	// local shortcut
-	var RenderPrefixes = library.RenderPrefixes;
+	var RenderPrefixes = RenderManager.RenderPrefixes;
 
 	/**
 	 * Constructor for a new HTML.
@@ -19,7 +26,7 @@ sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library']
 	 * @param {object} [mSettings] initial settings for the new control
 	 *
 	 * @class
-	 * Embeds standard HTML in a SAPUI5 control tree.
+	 * Embeds standard HTML in an SAPUI5 control tree.
 	 *
 	 * Security Hint: By default, the HTML content (property 'content') is not sanitized and therefore
 	 * open to XSS attacks. Applications that want to show user defined input in an HTML control, should
@@ -37,9 +44,8 @@ sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library']
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 *
-	 * @constructor
 	 * @public
 	 * @alias sap.ui.core.HTML
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
@@ -66,9 +72,12 @@ sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library']
 			 * Please consider to consult the jQuery documentation as well.
 			 *
 			 * The HTML control currently doesn't prevent the usage of multiple root nodes in its DOM content
-			 * (e.g. setContent("<div/><div/>")), but this is not a guaranteed feature. The accepted content
-			 * might be restricted to single root nodes in future versions. To notify applications about this
-			 * fact, a warning is written in the log when multiple root nodes are used.
+			 * (e.g. <code>setContent("&lt;div>&lt;/div>&lt;div>&lt;/div>")</code>), but this is not a guaranteed feature.
+			 * The accepted content might be restricted to single root nodes in future versions.
+			 * To notify applications about this fact, a warning is written in the log when multiple root nodes are used.
+			 *
+			 * When changing the content dynamically, ensure that the ID of the root node remains the same as the HTML
+			 * control's ID. Otherwise it cannot be guaranteed that certain lifecycle events take place.
 			 *
 			 * @SecSink {,XSS} The content of the 'content' property is rendered 1:1 to allow the full
 			 * flexibility of HTML in UI5 applications. Applications therefore must ensure, that they don't
@@ -83,7 +92,7 @@ sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library']
 			 *
 			 * There are two scenarios where this flag is relevant (when set to true):
 			 * <ul>
-			 * <li>for the initial rendering: when an HTML control is added to an UIArea for the first time
+			 * <li>for the initial rendering: when an HTML control is added to a UIArea for the first time
 			 *     and if the root node of that UIArea contained DOM content with the same id as the HTML
 			 *     control, then that content will be used for rendering instead of any specified string
 			 *     content</li>
@@ -99,7 +108,7 @@ sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library']
 			/**
 			 * Whether to run the HTML sanitizer once the content (HTML markup) is applied or not.
 			 *
-			 * To configure allowed URLs please use the whitelist API via jQuery.sap.addUrlWhitelist.
+			 * To configure the set of allowed URLs, you can use the {@link jQuery.sap.addUrlWhitelist whitelist API}.
 			 */
 			sanitizeContent : {type : "boolean", group : "Misc", defaultValue : false},
 
@@ -136,7 +145,7 @@ sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library']
 	 */
 	HTML.prototype.getDomRef = function(sSuffix) {
 		var sId = sSuffix ? this.getId() + "-" + sSuffix : this.getId();
-		return jQuery.sap.domById(RenderPrefixes.Dummy + sId) || jQuery.sap.domById(sId);
+		return document.getElementById(RenderPrefixes.Dummy + sId) || document.getElementById(sId);
 	};
 
 	HTML.prototype.setContent = function(sContent) {
@@ -162,8 +171,8 @@ sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library']
 		}
 
 		if ( this.getSanitizeContent() ) {
-			jQuery.sap.log.trace("sanitizing HTML content for " + this);
-			sContent = jQuery.sap._sanitizeHTML(sContent);
+			Log.trace("sanitizing HTML content for " + this);
+			sContent = sanitizeHTML(sContent);
 		}
 
 		this.setProperty("content", sContent, true);
@@ -187,8 +196,17 @@ sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library']
 	};
 
 	HTML.prototype.onBeforeRendering = function() {
-		if (this.getPreferDOM() && this.getDomRef() && !RenderManager.isPreservedContent(this.getDomRef())) {
-			RenderManager.preserveContent(this.getDomRef(), /* bPreserveRoot */ true, /* bPreserveNodesWithId */ false);
+		if (!this.getPreferDOM()) {
+			return;
+		}
+
+		var oDomRef = this.getDomRef();
+		if (oDomRef && !RenderManager.isPreservedContent(oDomRef)) {
+			// before the re-rendering move all "to-be-preserved" nodes to the preserved area
+			for (var sId = oDomRef.id, oNextDomRef; oDomRef && oDomRef.getAttribute("data-sap-ui-preserve") == sId; oDomRef = oNextDomRef) {
+				oNextDomRef = oDomRef.nextElementSibling;
+				RenderManager.preserveContent(oDomRef, /* bPreserveRoot */ true, /* bPreserveNodesWithId */ false);
+			}
 		}
 	};
 
@@ -202,17 +220,17 @@ sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library']
 			return;
 		}
 
-		var $placeholder = jQuery(jQuery.sap.domById(RenderPrefixes.Dummy + this.getId()));
+		var $placeholder = jQuery(document.getElementById(RenderPrefixes.Dummy + this.getId()));
 		var $oldContent = RenderManager.findPreservedContent(this.getId());
 		var $newContent;
 		var isPreservedDOM = false;
-		if ( /*this.getContent() && */ (!this.getPreferDOM() || $oldContent.size() == 0) ) {
+		if ( /*this.getContent() && */ (!this.getPreferDOM() || $oldContent.length == 0) ) {
 			// remove old, preserved content
 			$oldContent.remove();
 			// replace placeholder with content string
 			$newContent = new jQuery(this.getContent()); // TODO what if content is not HTML (e.g. #something)?
 			$placeholder.replaceWith($newContent);
-		} else if ( $oldContent.size() > 0 ) {
+		} else if ( $oldContent.length > 0 ) {
 			// replace dummy with old content
 			$placeholder.replaceWith($oldContent);
 			$newContent = $oldContent;
@@ -228,24 +246,26 @@ sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library']
 	};
 
 	HTML.prototype._postprocessNewContent = function($newContent) {
-		if ( $newContent && $newContent.size() > 0 ) {
+		if ( $newContent && $newContent.length > 0 ) {
 			if ( $newContent.length > 1 ) {
-				jQuery.sap.log.warning("[Unsupported Feature]: " + this + " has rendered " + $newContent.length + " root nodes!");
+				Log.warning("[Unsupported Feature]: " + this + " has rendered " + $newContent.length + " root nodes!");
 			} else {
 				var sContentId = $newContent.attr("id");
 				if (sContentId && sContentId != this.getId()) {
-					jQuery.sap.log.warning("[Unsupported Feature]: Id of HTML Control '" + this.getId() + "' does not match with content id '" + sContentId + "'!");
+					Log.warning("[Unsupported Feature]: Id of HTML Control '" + this.getId() + "' does not match with content id '" + sContentId + "'!");
 				}
 			}
 
-			// set a marker that identifies all root nodes in $newContent as 'to-be-preserved'
-			RenderManager.markPreservableContent($newContent, this.getId());
+			if (this.getPreferDOM()) {
+				// set a marker that identifies all root nodes in $newContent as 'to-be-preserved'
+				RenderManager.markPreservableContent($newContent, this.getId());
+			}
 			// and if no node has the control id, search the first without an id and set it
 			if ( $newContent.find("#" + this.getId().replace(/(:|\.)/g,'\\$1')).length === 0 ) {
 				$newContent.filter(":not([id])").first().attr("id", this.getId());
 			}
 		} else {
-			jQuery.sap.log.debug("" + this + " is empty after rendering, setting bOutput to false");
+			Log.debug("" + this + " is empty after rendering, setting bOutput to false");
 			this.bOutput = false; // clean up internal rendering bookkeeping
 		}
 	};
@@ -275,13 +295,13 @@ sap.ui.define(['jquery.sap.global', './Control', './RenderManager', './library']
 	};
 
 	HTML.prototype.setTooltip = function() {
-		jQuery.sap.log.warning("The sap.ui.core.HTML control doesn't support tooltips. Add the tooltip to the HTML content instead.");
+		Log.warning("The sap.ui.core.HTML control doesn't support tooltips. Add the tooltip to the HTML content instead.");
 		return Control.prototype.setTooltip.apply(this, arguments);
 	};
 
-	jQuery.each("hasStyleClass addStyleClass removeStyleClass toggleStyleClass".split(" "), function(method) {
+	"hasStyleClass addStyleClass removeStyleClass toggleStyleClass".split(" ").forEach(function(method) {
 		HTML.prototype[method] = function() {
-			jQuery.sap.log.warning("The sap.ui.core.HTML control doesn't support custom style classes. Manage custom CSS classes in the HTML content instead.");
+			Log.warning("The sap.ui.core.HTML control doesn't support custom style classes. Manage custom CSS classes in the HTML content instead.");
 			return Control.prototype[method].apply(this, arguments);
 		};
 	});

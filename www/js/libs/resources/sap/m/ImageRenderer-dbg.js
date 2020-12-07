@@ -1,13 +1,16 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides default renderer for control sap.m.Image
-sap.ui.define(['jquery.sap.global'],
-	function(jQuery) {
+sap.ui.define(['sap/m/library', "sap/base/security/encodeCSS"],
+	function(library, encodeCSS) {
 	"use strict";
+
+	// shortcut for sap.m.ImageMode
+	var ImageMode = library.ImageMode;
 
 	/**
 	 * Image renderer.
@@ -15,90 +18,121 @@ sap.ui.define(['jquery.sap.global'],
 	 * @namespace
 	 */
 	var ImageRenderer = {
+		apiVersion: 2
 	};
 
 
 	/**
 	 * Renders the HTML for the given control, using the provided {@link sap.ui.core.RenderManager}.
 	 *
-	 * @param {sap.ui.core.RenderManager} oRenderManager the RenderManager that can be used for writing to the Render-Output-Buffer
-	 * @param {sap.ui.core.Control} oControl an object representation of the control that should be rendered
+	 * @param {sap.ui.core.RenderManager} oRm The RenderManager that can be used for writing to the Render-Output-Buffer
+	 * @param {sap.ui.core.Control} oImage The control that should be rendered
 	 */
-	ImageRenderer.render = function(rm, oImage) {
+	ImageRenderer.render = function(oRm, oImage) {
 		var sMode = oImage.getMode(),
 			alt = oImage.getAlt(),
 			tooltip = oImage.getTooltip_AsString(),
-			bHasPressHandlers = oImage.hasListeners("press");
+			bHasPressHandlers = oImage.hasListeners("press"),
+			oLightBox = oImage.getDetailBox(),
+			sUseMap = oImage.getUseMap(),
+			aLabelledBy = oImage.getAriaLabelledBy(),
+			aDescribedBy = oImage.getAriaDescribedBy(),
+			aDetails = oImage.getAriaDetails(),
+			bIsImageMode = sMode === ImageMode.Image;
+
+		// Additional element for Image with LightBox
+		if (oLightBox) {
+			oRm.openStart("span", oImage);
+			oRm.class("sapMLightBoxImage");
+			oRm.openEnd();
+			oRm.openStart("span").class("sapMLightBoxMagnifyingGlass").openEnd().close("span");
+		}
 
 		// Open the DOM element tag. The 'img' tag is used for mode sap.m.ImageMode.Image and 'span' tag is used for sap.m.ImageMode.Background
-		rm.write(sMode === sap.m.ImageMode.Image ? "<img" : "<span");
 
-		rm.writeControlData(oImage);
+		if (bIsImageMode) {
+			oRm.voidStart("img", !oLightBox ? oImage : oImage.getId() + "-inner");
+		} else {
+			oRm.openStart("span", !oLightBox ? oImage : oImage.getId() + "-inner");
+		}
 
-		if (sMode === sap.m.ImageMode.Image) {
-			rm.writeAttributeEscaped("src", oImage._getDensityAwareSrc());
+		if (!oImage.getDecorative()) {
+			// aria-labelledby references
+			if (aLabelledBy && aLabelledBy.length > 0) {
+				oRm.attr("aria-labelledby", aLabelledBy.join(" "));
+			}
+
+			// aria-describedby references
+			if (aDescribedBy && aDescribedBy.length > 0) {
+				oRm.attr("aria-describedby", aDescribedBy.join(" "));
+			}
+
+			// aria-details references
+			if (aDetails && aDetails.length > 0) {
+				oRm.attr("aria-details", aDetails.join(" "));
+			}
+		}
+
+		if (bIsImageMode) {
+			oRm.attr("src", oImage._getDensityAwareSrc());
 		} else {
 			// preload the image with a window.Image instance. The source uri is set to the output DOM node via CSS style 'background-image' after the source image is loaded (in onload function)
 			oImage._preLoadImage(oImage._getDensityAwareSrc());
-			rm.addStyle("background-size", jQuery.sap.encodeHTML(oImage.getBackgroundSize()));
-			rm.addStyle("background-position", jQuery.sap.encodeHTML(oImage.getBackgroundPosition()));
-			rm.addStyle("background-repeat", jQuery.sap.encodeHTML(oImage.getBackgroundRepeat()));
+			if (oImage._isValidBackgroundSizeValue(oImage.getBackgroundSize())) {
+				oRm.style("background-size", oImage.getBackgroundSize());
+			}
+			if (oImage._isValidBackgroundPositionValue(oImage.getBackgroundPosition())) {
+				oRm.style("background-position", oImage.getBackgroundPosition());
+			}
+			oRm.style("background-repeat", encodeCSS(oImage.getBackgroundRepeat()));
 		}
 
-		rm.addClass("sapMImg");
+		oRm.class("sapMImg");
 		if (oImage.hasListeners("press") || oImage.hasListeners("tap")) {
-			rm.addClass("sapMPointer");
+			oRm.class("sapMPointer");
 		}
 
-		if (oImage.getUseMap() || !oImage.getDecorative()) {
-			rm.addClass("sapMImgFocusable");
+		if (sUseMap || !oImage.getDecorative() || bHasPressHandlers) {
+			oRm.class("sapMImgFocusable");
 		}
-
-		rm.writeClasses();
 
 		//TODO implement the ImageMap control
-		var sUseMap = oImage.getUseMap();
 		if (sUseMap) {
-			if (!(jQuery.sap.startsWith(sUseMap, "#"))) {
+			if (!(sUseMap.startsWith("#"))) {
 				sUseMap = "#" + sUseMap;
 			}
-			rm.writeAttributeEscaped("useMap", sUseMap);
+			oRm.attr("usemap", sUseMap);
 		}
 
 		if (oImage.getDecorative() && !sUseMap && !bHasPressHandlers) {
-			rm.writeAttribute("role", "presentation");
-			rm.writeAttribute("aria-hidden", "true");
-			rm.write(" alt=''"); // accessibility requirement: write always empty alt attribute for decorative images
-		} else {
-			if (alt || tooltip) {
-				rm.writeAttributeEscaped("alt", alt || tooltip);
-			}
+			oRm.attr("role", "presentation");
+			oRm.attr("aria-hidden", "true");
+			oRm.attr("alt", ""); // accessibility requirement: write always empty alt attribute for decorative images
+		} else if (alt || tooltip) {
+			oRm.attr("alt", alt || tooltip);
 		}
 
 		if (alt || tooltip) {
-			rm.writeAttributeEscaped("aria-label", alt || tooltip);
+			oRm.attr("aria-label", alt || tooltip);
 		}
 
 		if (tooltip) {
-			rm.writeAttributeEscaped("title", tooltip);
+			oRm.attr("title", tooltip);
 		}
 
 		if (bHasPressHandlers) {
-			rm.writeAttribute("role", "button");
-			rm.writeAttribute("tabIndex", 0);
+			oRm.attr("role", "button");
+			oRm.attr("tabindex", 0);
 		}
 
-		// Dimensions
-		if (oImage.getWidth() && oImage.getWidth() != '') {
-			rm.addStyle("width", oImage.getWidth());
-		}
-		if (oImage.getHeight() && oImage.getHeight() != '') {
-			rm.addStyle("height", oImage.getHeight());
-		}
+		oRm.style("width", oImage.getWidth());
+		oRm.style("height", oImage.getHeight());
 
-		rm.writeStyles();
+		bIsImageMode ? oRm.voidEnd() : oRm.openEnd().close("span"); // close the <img>/<span> element
 
-		rm.write(" />"); // close the <img> element
+		if (oLightBox) {
+			oRm.close("span");
+		}
 	};
 
 	return ImageRenderer;

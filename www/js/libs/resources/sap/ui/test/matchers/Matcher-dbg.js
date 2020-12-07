@@ -1,10 +1,13 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['sap/ui/base/ManagedObject'], function (fnManagedObject) {
+sap.ui.define([
+	"sap/ui/test/_OpaLogger",
+	"sap/ui/base/ManagedObject"
+], function (_OpaLogger, ManagedObject) {
 	"use strict";
 
 	/**
@@ -16,14 +19,19 @@ sap.ui.define(['sap/ui/base/ManagedObject'], function (fnManagedObject) {
 	 * @author SAP SE
 	 * @since 1.23
 	 */
-	return fnManagedObject.extend("sap.ui.test.matchers.Matcher", {
+	var Matcher = ManagedObject.extend("sap.ui.test.matchers.Matcher", {
 
 		metadata : {
 			publicMethods : [ "isMatching" ]
 		},
 
+		constructor: function () {
+			this._oLogger = _OpaLogger.getLogger(this.getMetadata().getName());
+			return ManagedObject.prototype.constructor.apply(this, arguments);
+		},
+
 		/**
-		 * Checks if the matcher is matching - will get an instance of sap.ui.Control as parameter.
+		 * Checks if the matcher is matching - will get an instance of sap.ui.core.Control as parameter.
 		 *
 		 * Should be overwritten by subclasses
 		 *
@@ -37,7 +45,24 @@ sap.ui.define(['sap/ui/base/ManagedObject'], function (fnManagedObject) {
 			return true;
 		},
 
-		_sLogPrefix : "Opa5 matcher"
+		/**
+		 * @return {object} window of the application under test, or the current window if OPA5 is not loaded
+		 * Note: declared matchers are instanciated in the app context (by MatcherFactory)
+		 * while users instanciate matchers in the test context (in a waitFor)
+		 * @private
+		 * @function
+		 */
+		_getApplicationWindow: function () {
+			if (sap.ui.test && sap.ui.test.Opa5) {
+				// matcher context === test context, because Opa5 is loadded
+				return sap.ui.test.Opa5.getWindow();
+			} else {
+				// matcher context === app context
+				return window;
+			}
+		}
+
 	});
 
-}, /* bExport= */ true);
+	return Matcher;
+});

@@ -1,21 +1,35 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer', './ColumnListItemRenderer'],
-	function(jQuery, Renderer, ListBaseRenderer, ColumnListItemRenderer) {
+sap.ui.define(["sap/ui/core/Renderer", "sap/ui/core/Core", "./library", "./ListBaseRenderer", "./ColumnListItemRenderer"],
+	function(Renderer, Core, library, ListBaseRenderer, ColumnListItemRenderer) {
 	"use strict";
 
 
+	// shortcut for sap.m.ListKeyboardMode
+	var ListKeyboardMode = library.ListKeyboardMode;
+
+
 	/**
-	 * List renderer.
-	 * @namespace
+	 * Table renderer.
 	 *
 	 * TableRenderer extends the ListBaseRenderer
+	 *
+	 * @namespace
 	 */
 	var TableRenderer = Renderer.extend(ListBaseRenderer);
+	TableRenderer.apiVersion = 2;
+
+	// store the flex alignment for the column header based on the RTL mode
+	var bRtl = Core.getConfiguration().getRTL();
+	TableRenderer.columnAlign = {
+		left: bRtl ? "flex-end" : "flex-start",
+		center: "center",
+		right: bRtl ? "flex-start" : "flex-end"
+	};
 
 
 	/**
@@ -35,68 +49,108 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'
 			clsPrefix = "sapMListTbl",
 			idPrefix = oTable.getId("tbl"),
 			cellTag = (type == "Head") ? "th" : "td",
-			cellRole = (type == "Head") ? "columnheader" : "gridcell",
 			groupTag = "t" + type.toLowerCase(),
 			aColumns = oTable.getColumns(),
-			isHeaderHidden = (type == "Head") && aColumns.every(function(oColumn) {
+			bShouldRenderDummyColumn = oTable.shouldRenderDummyColumn(),
+			bHeaderHidden,
+			createBlankCell = function(cls, id, bAriaHidden) {
+				rm.openStart(cellTag, id && idPrefix + id);
+				if (cellTag === "th") {
+					rm.class("sapMTableTH");
+					rm.attr("role", bAriaHidden ? "presentation" : "columnheader");
+					rm.attr("scope", "col");
+				} else if (bAriaHidden) { // hidden td
+					rm.attr("role", "presentation");
+				}
+				bAriaHidden && rm.attr("aria-hidden", "true");
+				rm.class(clsPrefix + cls);
+
+				if (type === "Foot") {
+					if (cls === "HighlightCol") {
+						rm.class("sapMTableHighlightFooterCell");
+					} else if (cls === "NavigatedCol") {
+						rm.class("sapMTableNavigatedFooterCell");
+					}
+				}
+
+				rm.openEnd();
+				rm.close(cellTag);
+				index++;
+			};
+
+		if (type == "Head") {
+			var oForcedColumn = aColumns.reduce(function(oRefColumn, oColumn, iOrder) {
+				oColumn.setIndex(-1);
+				oColumn.setInitialOrder(iOrder);
+				oColumn.setForcedColumn(false);
+				return (oColumn.getCalculatedMinScreenWidth() < oRefColumn.getCalculatedMinScreenWidth()) ? oColumn : oRefColumn;
+			}, aColumns[0]);
+
+			var iHeaderLength = aColumns.filter(function(oColumn) {
+				return	oColumn.getVisible() &&
+						!oColumn.isPopin() &&
+						!oColumn.isHidden();
+			}).length;
+
+			if (!iHeaderLength && oForcedColumn) {
+				oForcedColumn.setForcedColumn(true);
+				iHeaderLength = 1;
+			}
+
+			bHeaderHidden = aColumns.every(function(oColumn) {
 				return	!oColumn.getHeader() ||
 						!oColumn.getHeader().getVisible() ||
 						!oColumn.getVisible() ||
 						oColumn.isPopin() ||
-						oColumn.isNeverVisible() ||
 						oColumn.isHidden();
-			}),
-			hasOneHeader = (type == "Head") && aColumns.filter(function(oColumn) {
-				return	oColumn.getVisible() &&
-						!oColumn.isPopin() &&
-						!oColumn.isNeverVisible() &&
-						!oColumn.isHidden();
-			}).length == 1,
-			createBlankCell = function(cls, id, bAriaHidden) {
-				rm.write("<");
-				rm.write(cellTag);
-				rm.writeAttribute("role", cellRole);
-				bAriaHidden && rm.writeAttribute("aria-hidden", "true");
-				id && rm.writeAttribute("id", idPrefix + id);
-				rm.addClass(clsPrefix + cls);
-				rm.writeClasses();
-				rm.write("></");
-				rm.write(cellTag);
-				rm.write(">");
-				index++;
-			};
-
-		rm.write("<" + groupTag + ">");
-		rm.write("<tr");
-		rm.writeAttribute("tabindex", -1);
-		rm.writeAttribute("role", "row");
-		rm.writeAttribute("id", oTable.addNavSection(idPrefix + type + "er" ));
-
-		if (isHeaderHidden) {
-			rm.addClass("sapMListTblHeaderNone");
-		} else {
-			rm.addClass("sapMListTblRow sapMListTbl" + type + "er");
+			});
 		}
 
-		rm.writeClasses();
-		rm.write(">");
+		rm.openStart(groupTag);
 
-		if (iModeOrder == -1) {
-			if (mode == "MultiSelect" && type == "Head" && !isHeaderHidden) {
-				rm.write("<th role='columnheader' class='" + clsPrefix + "SelCol'>");
-				rm.write("<div class='sapMLIBSelectM'>");
-				rm.renderControl(oTable._getSelectAllCheckbox());
-				rm.write("</div></th>");
-				index++;
-			} else {
-				createBlankCell("SelCol");
+		if (oTable._hasFooter && type === "Foot") {
+			rm.class("sapMTableTFoot");
+
+			if (oTable.hasPopin()) {
+				rm.class("sapMListTblHasPopin");
 			}
 		}
 
-		aColumns.forEach(function(oColumn, order) {
-			oColumn.setIndex(-1);
-			oColumn.setInitialOrder(order);
-		});
+		rm.openEnd();
+
+		rm.openStart("tr", oTable.addNavSection(idPrefix + type + "er"));
+		if (type !== "Head" && bShouldRenderDummyColumn) {
+			rm.class("sapMListTblRowHasDummyCell");
+		}
+		rm.attr("tabindex", -1);
+
+		if (bHeaderHidden) {
+			rm.class("sapMListTblHeaderNone");
+		} else {
+			rm.class("sapMListTblRow").class("sapMLIBFocusable").class("sapMListTbl" + type + "er");
+			ColumnListItemRenderer.addLegacyOutlineClass.call(ColumnListItemRenderer, rm);
+		}
+
+		rm.openEnd();
+
+		createBlankCell("HighlightCol", type + "Highlight", true);
+
+		if (iModeOrder == -1) {
+			if (mode == "MultiSelect" && type == "Head" && !bHeaderHidden) {
+				rm.openStart("th");
+				rm.class("sapMTableTH");
+				rm.attr("scope", "col");
+				rm.attr("aria-hidden", "true");
+				rm.class(clsPrefix + "SelCol");
+				rm.attr("role", "presentation");
+				rm.openEnd();
+				rm.renderControl(oTable._getSelectAllCheckbox());
+				rm.close("th");
+				index++;
+			} else {
+				createBlankCell("SelCol", "", true);
+			}
+		}
 
 		oTable.getColumns(true).forEach(function(oColumn, order) {
 			if (!oColumn.getVisible()) {
@@ -106,58 +160,107 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'
 				hasPopin = true;
 				return;
 			}
-			if (oColumn.isNeverVisible()) {
-				return;
-			}
-			if (oColumn.isHidden()) {
+			var bHidden = oColumn.isHidden();
+			if (bHidden) {
 				hiddens++;
 			}
 
 			var control = oColumn["get" + type + "er"](),
-				width = hasOneHeader ? "" : oColumn.getWidth(),
-				cls = oColumn.getStyleClass(true),
+				width = (iHeaderLength == 1) ? "" : oColumn.getWidth(),
+				aStyleClass = oColumn.getStyleClass(true).split(" "),
 				align = oColumn.getCssAlign();
 
-			rm.write("<" + cellTag);
-			cls && rm.addClass(jQuery.sap.encodeHTML(cls));
-			rm.addClass(clsPrefix + "Cell");
-			rm.addClass(clsPrefix + type + "erCell");
-			rm.writeAttribute("id", idPrefix + type + index);
-			rm.writeAttribute("data-sap-width", oColumn.getWidth());
-			rm.writeAttribute("role", cellRole);
-			width && rm.addStyle("width", width);
-
-			if (align) {
-				rm.addStyle("text-align", align);
+			if (type == "Head") {
+				rm.openStart(cellTag, oColumn);
+				rm.class("sapMTableTH");
+				rm.attr("role", "columnheader");
+				rm.attr("scope", "col");
+				var sSortIndicator = oColumn.getSortIndicator().toLowerCase();
+				sSortIndicator !== "none" && rm.attr("aria-sort", sSortIndicator);
+			} else {
+				rm.openStart(cellTag);
 			}
 
-			rm.writeClasses();
-			rm.writeStyles();
-			rm.write(">");
+			aStyleClass && aStyleClass.forEach(function (sClsName) {
+				rm.class(sClsName);
+			});
+			rm.class(clsPrefix + "Cell");
+			rm.class(clsPrefix + type + "erCell");
+			rm.attr("data-sap-width", oColumn.getWidth());
+			rm.style("width", width);
+
+			// required to set the correct aligment to the footer cell
+			if (align && type !== "Head") {
+				rm.style("text-align", align);
+			}
+
+			if (bHidden) {
+				rm.style("display", "none");
+				rm.attr("aria-hidden", "true");
+			}
+
+			rm.openEnd();
+
 			if (control) {
-				oColumn.applyAlignTo(control);
-				rm.renderControl(control);
+				if (type === "Head") {
+					rm.openStart("div");
+					rm.class("sapMColumnHeader");
+
+					if (oTable.bActiveHeaders && !control.isA("sap.ui.core.InvisibleText")) {
+						// add active header attributes and style class
+						rm.attr("tabindex", 0);
+						rm.attr("role", "button");
+						rm.attr("aria-haspopup", "dialog");
+						rm.class("sapMColumnHeaderActive");
+					}
+
+					if (align) {
+						rm.style("justify-content", TableRenderer.columnAlign[align]);
+						rm.style("text-align", align);
+					}
+
+					rm.openEnd();
+					rm.renderControl(control.addStyleClass("sapMColumnHeaderContent"));
+					rm.close("div");
+				} else {
+					// rendering of the footer cell
+					rm.renderControl(control);
+				}
 			}
+
 			if (type == "Head" && !hasFooter) {
 				hasFooter = !!oColumn.getFooter();
 			}
-			rm.write("</" + cellTag + ">");
+
+			rm.close(cellTag);
 			oColumn.setIndex(index++);
 		});
 
-		createBlankCell("NavCol", type + "Nav", !oTable._iItemNeedsColumn);
-
-		if (iModeOrder == 1) {
-			createBlankCell("SelCol");
+		if (hasPopin && bShouldRenderDummyColumn) {
+			createBlankCell("DummyCol", type + "DummyCol", true);
 		}
 
-		rm.write("</tr></" + groupTag + ">");
+		createBlankCell("NavCol", type + "Nav", true);
 
-		if (type == "Head") {
+		if (iModeOrder == 1) {
+			createBlankCell("SelCol", "", true);
+		}
+
+		createBlankCell("NavigatedCol", type + "Navigated", true);
+
+		if (!hasPopin && bShouldRenderDummyColumn) {
+			createBlankCell("DummyCol", type + "DummyCol", true);
+		}
+
+		rm.close("tr");
+		rm.close(groupTag);
+
+		if (type === "Head") {
+			oTable._bPopinChanged = oTable._hasPopin !== hasPopin || oTable._iHiddenPopinColumns !== oTable._getHiddenInPopin().length;
 			oTable._hasPopin = hasPopin;
 			oTable._colCount = index - hiddens;
 			oTable._hasFooter = hasFooter;
-			oTable._headerHidden = isHeaderHidden;
+			oTable._headerHidden = bHeaderHidden;
 		}
 	};
 
@@ -165,31 +268,27 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'
 	 * add table container class name
 	 */
 	TableRenderer.renderContainerAttributes = function(rm, oControl) {
-		rm.addClass("sapMListTblCnt");
+		rm.attr("role", "application");
+		rm.attr("aria-roledescription", Core.getLibraryResourceBundle("sap.m").getText("TABLE_ROLE_DESCRIPTION"));
+		rm.class("sapMListTblCnt");
+
+		// write accessibility state for the table container
+		rm.accessibilityState(oControl, this.getAccessibilityState(oControl));
 	};
 
 	/**
 	 * render table tag and add required classes
 	 */
 	TableRenderer.renderListStartAttributes = function(rm, oControl) {
-		rm.write("<div");
-		rm.writeAttribute("id", oControl.getId() + "-labelledby");
-		rm.writeAttribute("aria-hidden", "true");
-		rm.addClass("sapUiInvisibleText");
-		rm.writeClasses();
-		rm.write(">");
-		rm.writeEscaped(sap.ui.getCore().getLibraryResourceBundle("sap.m").getText("LIST_VIEW"));
-		rm.write("</div>");
-
-		rm.write("<table");
-		rm.addClass("sapMListTbl");
+		rm.openStart("table", oControl.getId("listUl"));
+		rm.class("sapMListTbl");
 		if (oControl.getFixedLayout() === false) {
-			rm.addStyle("table-layout", "auto");
+			rm.style("table-layout", "auto");
 		}
 
 		// make the type column visible if needed
 		if (oControl._iItemNeedsColumn) {
-			rm.addClass("sapMListTblHasNav");
+			rm.class("sapMListTblHasNav");
 		}
 	};
 
@@ -197,17 +296,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'
 	 * returns aria accessibility role
 	 */
 	TableRenderer.getAriaRole = function(oControl) {
-		return "grid";
-	};
-
-	/**
-	 * returns the additional aria-labelledby assosiation
-	 */
-	TableRenderer.getAriaLabelledBy = function(oControl) {
-		var sAriaLabelledBy = oControl.getId() + "-labelledby",
-			sBaseLabelledBy = ListBaseRenderer.getAriaLabelledBy.call(this, oControl);
-
-		return sBaseLabelledBy ? (sAriaLabelledBy + " " + sBaseLabelledBy) : sAriaLabelledBy;
+		return "";
 	};
 
 	/**
@@ -215,47 +304,53 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'
 	 */
 	TableRenderer.renderListHeadAttributes = function(rm, oControl) {
 		this.renderColumns(rm, oControl, "Head");
-		rm.write("<tbody");
-		rm.writeAttribute("id", oControl.addNavSection(oControl.getId("tblBody")));
-		rm.write(">");
+		rm.openStart("tbody", oControl.addNavSection(oControl.getId("tblBody")));
+		rm.class("sapMListItems");
+		rm.class("sapMTableTBody");
+		if (oControl.getAlternateRowColors()) {
+			rm.class(oControl._getAlternateRowColorsClass());
+		}
+		if (oControl.hasPopin()) {
+			rm.class("sapMListTblHasPopin");
+		}
+		rm.openEnd();
 	};
 
 	/**
 	 * render footer and finish rendering table
 	 */
 	TableRenderer.renderListEndAttributes = function(rm, oControl) {
-		rm.write("</tbody>");	// items should be rendered before foot
+		rm.close("tbody"); // items should be rendered before foot
 		oControl._hasFooter && this.renderColumns(rm, oControl, "Foot");
-		rm.write("</table>");
+		rm.close("table");
 	};
 
 	/**
 	 * render no data
 	 */
 	TableRenderer.renderNoData = function(rm, oControl) {
-		rm.write("<tr");
-		rm.writeAttribute("role", "row");
-		rm.writeAttribute("tabindex", "-1");
-		rm.writeAttribute("id", oControl.getId("nodata"));
-		rm.addClass("sapMLIB sapMListTblRow sapMLIBTypeInactive");
+		rm.openStart("tr", oControl.getId("nodata"));
+		rm.attr("tabindex", oControl.getKeyboardMode() == ListKeyboardMode.Navigation ? -1 : 0);
+		rm.class("sapMLIB").class("sapMListTblRow").class("sapMLIBTypeInactive");
 		ColumnListItemRenderer.addFocusableClasses.call(ColumnListItemRenderer, rm);
 		if (!oControl._headerHidden || (!oControl.getHeaderText() && !oControl.getHeaderToolbar())) {
-			rm.addClass("sapMLIBShowSeparator");
+			rm.class("sapMLIBShowSeparator");
 		}
-		rm.writeClasses();
-		rm.write(">");
+		rm.openEnd();
 
-		rm.write("<td");
-		rm.writeAttribute("role", "gridcell");
-		rm.writeAttribute("id", oControl.getId("nodata-text"));
-		rm.writeAttribute("colspan", oControl.getColCount());
-		rm.addClass("sapMListTblCell sapMListTblCellNoData");
-		rm.writeClasses();
-		rm.write(">");
-		rm.writeEscaped(oControl.getNoDataText(true));
-		rm.write("</td>");
+		rm.openStart("td", oControl.getId("nodata-text"));
+		rm.attr("colspan", oControl.getColCount());
+		rm.class("sapMListTblCell").class("sapMListTblCellNoData");
+		rm.openEnd();
 
-		rm.write("</tr>");
+		if (!oControl.shouldRenderItems()) {
+			rm.text(Core.getLibraryResourceBundle("sap.m").getText("TABLE_NO_COLUMNS"));
+		} else {
+			rm.text(oControl.getNoDataText(true));
+		}
+
+		rm.close("td");
+		rm.close("tr");
 	};
 
 	return TableRenderer;

@@ -1,17 +1,17 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides class sap.ui.core.support.plugins.MessageTest (Test  plugin for support tool communication)
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
-	function(jQuery, Plugin) {
+sap.ui.define([
+	'../Plugin',
+	'../Support',
+	"sap/base/security/encodeXML"
+],
+	function(Plugin, Support, encodeXML) {
 	"use strict";
-
-
-
-
 
 		/**
 		 * Creates an instance of sap.ui.core.support.plugins.MessageTest.
@@ -19,10 +19,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 		 *
 		 * This class is only for testing purposes for support tool communication.
 		 *
-		 * @abstract
 		 * @extends sap.ui.core.support.Plugin
-		 * @version 1.36.8
-		 * @constructor
+		 * @version 1.84.1
 		 * @private
 		 * @alias sap.ui.core.support.plugins.MessageTest
 		 */
@@ -30,11 +28,10 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 			constructor : function(oSupportStub) {
 				Plugin.apply(this, ["sapUiSupportMessageTest", "Support Tool Communication Test", oSupportStub]);
 
-				this._aEventIds = [this.getId() + "Msg", sap.ui.core.support.Support.EventType.SETUP, sap.ui.core.support.Support.EventType.TEAR_DOWN];
+				this._aEventIds = [this.getId() + "Msg", Support.EventType.SETUP, Support.EventType.TEAR_DOWN];
 				this._bFirstTime = true;
 			}
 		});
-
 
 		/**
 		 * Handler for sapUiSupportMessageTestMsg event
@@ -59,8 +56,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 
 			var rm = sap.ui.getCore().createRenderManager();
 			rm.write("<div class='sapUiSupportToolbar'>");
-			rm.write("<input type='text' id='" + this.getId() + "-input' class='sapUiSupportTxtFld'></input>");
-			rm.write("<button id='" + this.getId() + "-send' class='sapUiSupportBtn'>Send</button>");
+			rm.write("<input type='text' id='" + this.getId() + "-input' class='sapUiSupportTxtFld'>");
+			rm.write("<button id='" + this.getId() + "-send' class='sapUiSupportRoundedButton'>Send</button>");
 			rm.write("</div><div class='sapUiSupportMessageCntnt'></div>");
 			rm.flush(this.$().get(0));
 			rm.destroy();
@@ -71,15 +68,15 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 				report(that, that.getId() + "Msg", sVal, false);
 			};
 
-			this.$("send").bind("click", this._fSendHandler);
-			report(this, sap.ui.core.support.Support.EventType.SETUP, "", true);
+			this.$("send").on("click", this._fSendHandler);
+			report(this, Support.EventType.SETUP, "", true);
 		};
 
 
 		MessageTest.prototype.exit = function(oSupportStub){
-			report(this, sap.ui.core.support.Support.EventType.TEAR_DOWN, "", true);
+			report(this, Support.EventType.TEAR_DOWN, "", true);
 			if (this._fSendHandler) {
-				this.$("send").unbind("click", this._fSendHandler);
+				this.$("send").off("click", this._fSendHandler);
 				this._fSendHandler = null;
 			}
 			Plugin.prototype.exit.apply(this, arguments);
@@ -88,7 +85,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/support/Plugin'],
 
 		function report(oPlugin, sMessageId, sMessage, bReceive){
 			jQuery(".sapUiSupportMessageCntnt", oPlugin.$()).append("<b style=\"color:" + (bReceive ? "green" : "blue") + ";\">Message '" + sMessageId + "' " + (bReceive ? "received" : "send") +
-					(sMessage ? ":</b> " + jQuery.sap.escapeHTML(sMessage) : "</b>") + "<br>");
+					(sMessage ? ":</b> " + encodeXML(sMessage) : "</b>") + "<br>");
 		}
 
 

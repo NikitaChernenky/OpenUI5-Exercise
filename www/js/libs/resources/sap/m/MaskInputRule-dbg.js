@@ -1,11 +1,11 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides control sap.m.MaskInputRule.
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element'], function(jQuery, Element) {
+sap.ui.define(['sap/ui/core/Element', "sap/base/Log"], function(Element, Log) {
 	"use strict";
 
 	/**
@@ -20,7 +20,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element'], function(jQuery, Ele
 	 *
 	 * @author SAP SE
 	 * @extends sap.ui.core.Element
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 * @public
 	 * @constructor
 	 * @since 1.34.0
@@ -45,7 +45,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element'], function(jQuery, Ele
 		}
 	});
 
-	/**
+	/*
 	 * Sets <code>maskFormatSymbol</code> property.
 	 * @override
 	 * @param {String} sNewMaskFormatSymbol The new format symbol
@@ -60,7 +60,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element'], function(jQuery, Ele
 		return this;
 	};
 
-	/**
+	/*
 	 * Sets <code>regex</code> property.
 	 * @override
 	 * @param {String} sNewRegex The new regular expression
@@ -97,7 +97,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element'], function(jQuery, Ele
 		if (/^.$/i.test(sNewSymbol)) {
 			return true;
 		}
-		jQuery.sap.log.error("The mask format symbol '" + sNewSymbol + "' is not valid");
+		Log.error("The mask format symbol '" + sNewSymbol + "' is not valid");
 		return false;
 	}
 
@@ -111,10 +111,10 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Element'], function(jQuery, Ele
 		if (/.+/i.test(sRegex)) {
 			return true;
 		}
-		jQuery.sap.log.error("The regex value '" + sRegex + "' is not valid");
+		Log.error("The regex value '" + sRegex + "' is not valid");
 		return false;
 	}
 
 	return MaskInputRule;
 
-}, /* bExport= */ true);
+});

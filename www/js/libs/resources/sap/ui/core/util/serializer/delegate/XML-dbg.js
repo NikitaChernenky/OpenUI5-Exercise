@@ -1,11 +1,16 @@
 /*
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', './Delegate'],
-	function(jQuery, Delegate) {
+sap.ui.define([
+	'./Delegate',
+	"sap/base/util/deepEqual",
+	"sap/base/security/encodeXML",
+	"sap/ui/thirdparty/jquery"
+],
+	function(Delegate, deepEqual, encodeXML, jQuery) {
 	"use strict";
 
 
@@ -18,13 +23,13 @@ sap.ui.define(['jquery.sap.global', './Delegate'],
 	 * @param {function} [fnGetEventHandlerName] delegate function which returns the event handler name
 	 * @param {function} [fnMemorizePackage] a delegate function to memorize the control packages
 	 *
-	 * @public
 	 * @class XML serializer delegate class.
 	 * @extends sap.ui.core.util.serializer.delegate.Delegate
 	 * @author SAP SE
-	 * @version 1.36.8
+	 * @version 1.84.1
 	 * @alias sap.ui.core.util.serializer.delegate.XML
-	 * @experimental Since 1.15.1. The XML serializer delegate is still under construction, so some implementation details can be changed in future.
+	 * @private
+	 * @ui5-restricted sap.watt com.sap.webide
 	 */
 	var XML = Delegate.extend("sap.ui.core.util.serializer.delegate.XML", /** @lends sap.ui.core.util.serializer.delegate.XML.prototype */
 	{
@@ -112,7 +117,7 @@ sap.ui.define(['jquery.sap.global', './Delegate'],
 			var aCssClasses = [];
 			for (var i = 0; i < aCustomClasses.length; i++) {
 				var sCssClass = aCustomClasses[i];
-				if (!jQuery.sap.startsWith(sCssClass, "sapM") && !jQuery.sap.startsWith(sCssClass, "sapUi")) {
+				if (!sCssClass.startsWith("sapM") && !sCssClass.startsWith("sapUi")) {
 					aCssClasses.push(sCssClass);
 				}
 			}
@@ -151,8 +156,10 @@ sap.ui.define(['jquery.sap.global', './Delegate'],
 
 		// write properties
 		var oProperties = oControl.getMetadata().getAllProperties();
+		var oDefaults = oControl.getMetadata().getPropertyDefaults();
 		this._createAttributes(aXml, oControl, oProperties, null, function (sName, oValue) {
-			return (!!oControl.getBindingInfo(sName) || (oValue !== null && typeof oValue !== undefined && oValue !== ""));
+			// write property only if it has a value different from the default value
+			return !deepEqual(oValue, oDefaults[sName]);
 		});
 
 		// write aggregations
@@ -190,10 +197,8 @@ sap.ui.define(['jquery.sap.global', './Delegate'],
 				var oValue = oControl[sGetter]();
 				oValue = fnGetValue ? fnGetValue(sName, oValue) : oValue;
 				if (!oControl.getBindingInfo(sName)) {
-					if (!jQuery.sap.equal(oValue,oProp.defaultValue)) {
-						if (!fnValueCheck || fnValueCheck(sName, oValue)) {
-							aXml.push(this._createAttribute(sName, oValue));
-						}
+					if (!fnValueCheck || fnValueCheck(sName, oValue)) {
+						aXml.push(this._createAttribute(sName, oValue));
 					}
 				} else {
 					aXml.push(this._createDataBindingAttribute(oControl, sName, oValue));
@@ -253,7 +258,8 @@ sap.ui.define(['jquery.sap.global', './Delegate'],
 	 * @private
 	 */
 	XML.prototype._createAttribute = function (sAttribute, oValue) {
-		return ' ' + sAttribute + '="' + oValue + '"';
+		var oEncoded = (typeof oValue === "string" || oValue instanceof String) ? encodeXML(oValue) : oValue;
+		return ' ' + sAttribute + '="' + oEncoded + '"';
 	};
 
 

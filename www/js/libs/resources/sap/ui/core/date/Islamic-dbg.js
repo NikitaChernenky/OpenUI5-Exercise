@@ -1,12 +1,12 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * OpenUI5
+ * (c) Copyright 2009-2020 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
 // Provides class sap.ui.core.date.Islamic
-sap.ui.define(['jquery.sap.global', './UniversalDate'],
-	function(jQuery, UniversalDate) {
+sap.ui.define(['./UniversalDate', '../CalendarType', 'sap/base/Log', './_Calendars'],
+	function(UniversalDate, CalendarType, Log, _Calendars) {
 	"use strict";
 
 
@@ -28,7 +28,7 @@ sap.ui.define(['jquery.sap.global', './UniversalDate'],
 				aArgs = toGregorianArguments(aArgs);
 			}
 			this.oDate = this.createDate(Date, aArgs);
-			this.sCalendarType = sap.ui.core.CalendarType.Islamic;
+			this.sCalendarType = CalendarType.Islamic;
 		}
 	});
 
@@ -49,10 +49,14 @@ sap.ui.define(['jquery.sap.global', './UniversalDate'],
 
 	var oCustomizationMap = null;
 
+	// Currently those are the two supported Islamic Calendar types in the ABAP
+	var aSupportedIslamicCalendarTypes = ["A", "B"];
+
 	/**
-	 * Calculate islamic date from gregorian
+	 * Calculate islamic date from gregorian.
 	 *
-	 * @param {object} oGregorian a JS object containing day, month and year in the gregorian calendar
+	 * @param {object} oGregorian A JS object containing day, month and year in the gregorian calendar
+	 * @returns {object} The islamic date object created
 	 * @private
 	 */
 	function toIslamic(oGregorian) {
@@ -117,9 +121,10 @@ sap.ui.define(['jquery.sap.global', './UniversalDate'],
 	}
 
 	/**
-	 * Calculate gregorian date from islamic
+	 * Calculate gregorian date from islamic.
 	 *
-	 * @param {object} oIslamic a JS object containing day, month and year in the islamic calendar
+	 * @param {object} oIslamic A JS object containing day, month and year in the islamic calendar
+	 * @returns {object} The gregorian date object created
 	 * @private
 	 */
 	function toGregorian(oIslamic) {
@@ -208,17 +213,13 @@ sap.ui.define(['jquery.sap.global', './UniversalDate'],
 		oCustomizationMap = {};
 
 		sDateFormat = sap.ui.getCore().getConfiguration().getFormatSettings().getLegacyDateFormat();
+		sDateFormat = _isSupportedIslamicCalendarType(sDateFormat) ? sDateFormat : "A"; // set "A" as a fall-back format always
 		oCustomizationJSON = sap.ui.getCore().getConfiguration().getFormatSettings().getLegacyDateCalendarCustomizing();
 		oCustomizationJSON = oCustomizationJSON || [];
 
-		if (!sDateFormat && !oCustomizationJSON.length) {//working with no customization
-			jQuery.sap.log.info("No calendar customizations.");
-			return;
-		}
 
-		if ((sDateFormat && !oCustomizationJSON.length) || (!sDateFormat && oCustomizationJSON.length)) {
-			jQuery.sap.log.warning("There is a inconsistency between customization data [" + JSON.stringify(oCustomizationJSON) +
-			"] and the date format [" + sDateFormat + "]. Calendar customization won't be used.");
+		if (!oCustomizationJSON.length) {
+			Log.warning("No calendar customizations.");
 			return;
 		}
 
@@ -235,14 +236,14 @@ sap.ui.define(['jquery.sap.global', './UniversalDate'],
 				oCustomizationMap[iIslamicMonths] = iIslamicMonthStartDays;
 			}
 		});
-		jQuery.sap.log.info("Working with date format: [" + sDateFormat + "] and customization: " + JSON.stringify(oCustomizationJSON));
+		Log.info("Working with date format: [" + sDateFormat + "] and customization: " + JSON.stringify(oCustomizationJSON));
 	}
 
 	function parseDate(sDate) {
 		return {
-			year: parseInt(sDate.substr(0, 4), 10),
-			month: parseInt(sDate.substr(4, 2), 10),
-			day: parseInt(sDate.substr(6, 2), 10)
+			year: parseInt(sDate.substr(0, 4)),
+			month: parseInt(sDate.substr(4, 2)),
+			day: parseInt(sDate.substr(6, 2))
 		};
 	}
 
@@ -271,8 +272,13 @@ sap.ui.define(['jquery.sap.global', './UniversalDate'],
 		return !(iYear % 400) || (!(iYear % 4) && !!(iYear % 100));
 	}
 
+	function _isSupportedIslamicCalendarType (sCalendarType) {
+		return aSupportedIslamicCalendarTypes.indexOf(sCalendarType) !== -1;
+	}
+
 	/**
-	 * Get the islamic date from the this.oDate
+	 * Get the islamic date from the this.oDate.
+	 * @returns {object} The islamic date object created
 	 */
 	Islamic.prototype._getIslamic = function() {
 		return toIslamic({
@@ -283,8 +289,9 @@ sap.ui.define(['jquery.sap.global', './UniversalDate'],
 	};
 
 	/**
-	 * Set the islamic date to the current this.oDate object
-	 * @param {object} oIslamic a JS object containing day, month and year in the islamic calendar
+	 * Set the islamic date to the current this.oDate object.
+	 * @param {object} oIslamic A JS object containing day, month and year in the islamic calendar
+	 * @returns {number} <code>this</code> to allow method chaining
 	 */
 	Islamic.prototype._setIslamic = function(oIslamic) {
 		var oGregorian = toGregorian(oIslamic);
@@ -292,7 +299,8 @@ sap.ui.define(['jquery.sap.global', './UniversalDate'],
 	};
 
 	/**
-	 * Get the islamic date from the this.oDate
+	 * Get the islamic date from the this.oDate.
+	 * @returns {object} The UTC date object created
 	 */
 	Islamic.prototype._getUTCIslamic = function() {
 		return toIslamic({
@@ -303,8 +311,9 @@ sap.ui.define(['jquery.sap.global', './UniversalDate'],
 	};
 
 	/**
-	 * Set the islamic date to the current this.oDate object
-	 * @param {object} oIslamic a JS object containing day, month and year in the islamic calendar
+	 * Set the islamic date to the current this.oDate object.
+	 * @param {object} oIslamic A JS object containing day, month and year in the islamic calendar
+	 * @returns {number} <code>this</code> to allow method chaining
 	 */
 	Islamic.prototype._setUTCIslamic = function(oIslamic) {
 		var oGregorian = toGregorian(oIslamic);
@@ -388,6 +397,8 @@ sap.ui.define(['jquery.sap.global', './UniversalDate'],
 		}
 		return this._setUTCIslamic(oIslamic);
 	};
+
+	_Calendars.set(CalendarType.Islamic, Islamic);
 
 	return Islamic;
 
