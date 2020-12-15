@@ -10,5 +10,5 @@
         "node_modules" : true
     },
     "ui5ts.manifestlocation": "www/js/libs/resources/sap/ui/unified/manifest.json",
-    "compile-hero.disable-compile-files-on-did-save-code": false
+    "compile-hero.disable-compile-files-on-did-save-code": true
 }
