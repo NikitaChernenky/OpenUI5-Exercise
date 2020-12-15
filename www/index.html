@@ -3,25 +3,40 @@
     <head>
         <meta http-equiv='X-UA-Compatible' content='IE=edge' />
         <meta http-equiv="Content-Security-Policy" content="default-src *; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'">
+        
+        <meta name="format-detection" content="telephone=no">
+        <meta name="msapplication-tap-highlight" content="no">
+        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
         <title>Test App</title>
+        <link rel="stylesheet" type="text/css" href="assets/lib/bootstrap/css/bootstrap.min.css"></link>
+        <link rel="stylesheet" href="./assets/css/font-awesome-4.7.0/css/font-awesome.min.css">   
+        <link rel="stylesheet" type="text/css" href="./assets/css/login.css">
+    </head>
         
         <!-- <link rel="stylesheet" type="text/css" href="css/SaskPower.css"> -->
-        
-        <script type="text/javascript" src="cordova.js"></script>
-        <script type="text/javascript" src="app/controller/router.js"></script>
-                
-        <script src="js/libs/resources/sap-ui-core.js"
+        <body class='sapUiBody' role="application">
+            <div id='content'></div>
+            <script src="js/libs/resources/sap-ui-core.js"
             id="sap-ui-bootstrap"
             data-sap-ui-libs="sap.m"
             data-sap-ui-theme="sap_bluecrystal">
         </script>
         
+        <script type="text/javascript" src="cordova.js"></script>
+        <script type="text/javascript" src="app/controller/router.js"></script>
+        <script type="text/javascript" src="app/controller/saskpower.sqliteHelper.js"></script>
         
-    </head>
-    
-    <body class='sapUiBody' role="application">
-        <div id='content'></div>
+        <script type="text/javascript" src="js/libs/smapi/smapi.device.keychain.js"></script>  
+        <scrip type="text/javascript" src="js/libs/smapi/smapi.util.smpauth.js"></scrip>  
+        <scrip type="text/javascript" src="assets/js/global.js"></scrip>    
+        <script type="text/javascript" src="app/controller/app.js"></script>
+
+        <!-- <script type="text/javascript" src="app/SqliteManager.js"></script> -->
+
+
+                
+
+        <!-- <script type="text/javascript" src="app/routeManager.js"></script> -->
+   
     </body>
-    
- 
 </html>

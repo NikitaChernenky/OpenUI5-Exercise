@@ -1,20 +1,41 @@
-<mvc:View
-    height="100%"
-    controllerName="app.controller.login"
+<mvc:View height="100%" controllerName="app.controller.login"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns:core="sap.ui.core"
+    xmlns:html="http://www.w3.org/1999/xhtml"
+    xmlns:u="sap.ui.unified"
     xmlns="sap.m">
-    
-    <Page showHeader="true" enableScrolling="false" title="Login">
-    <Text text="Test App Nikita"/>
-  
-<footer>
+
+    <Page showHeader="true" enableScrolling="false" title="Login Page" id="login">
+
+        <content>
+            <FlexBox height="30%" direction="Column" alignItems="Center" justifyContent="Center">
+                <items>
+                    <Image id="logo" src="./assets/img/SPLogo.png" class="login-logo"/>
+                </items>
+            </FlexBox>
+            <FlexBox height="70%" direction="Column" alignItems="Center" justifyContent="Start">
+                <items>
+                    <VBox>
+                        <HBox>
+                            <core:Icon src="sap-icon://person-placeholder" class="size1 login-icon"/>
+                            <Input class="login-input" placeholder="Username" id="username" type="Text" value="" submit="onLogin" />
+                        </HBox>
+                        <HBox>
+                            <core:Icon src="sap-icon://locked" class="size1 login-icon"/>
+                            <Input class="login-input" placeholder="Password" id="password" type="Password" value="" submit="onLogin" />
+                        </HBox>
+                        <CheckBox class="login-check" select="showPassword" selected="false" text="show password"/>
+                        <Button press="onLogin" text="Log On" icon="sap-icon://log" width="100%" />
+                    </VBox>
+                </items>
+            </FlexBox>
+        </content>
+        <footer>
             <Bar>
-                <contentRight>
-                    <Button text="" press="handlePress"  icon="sap-icon://action-settings" />
-                </contentRight>
+                <contentLeft>
+                    <Button icon="sap-icon://hint" press="onInfo" text="info"/>
+                </contentLeft>
             </Bar>
         </footer>
- 
     </Page>
 </mvc:View>
